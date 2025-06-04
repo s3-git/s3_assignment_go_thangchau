@@ -19,8 +19,7 @@ func NewUserHandler(userController interfaces.UserControllerInterface) *UserHand
 }
 
 type CreateFriendshipRequest struct {
-	UserID1 int `json:"user_id_1" binding:"required"`
-	UserID2 int `json:"user_id_2" binding:"required"`
+	Friends []string `json:"friends"`
 }
 
 func (h *UserHandler) CreateFriendships(c *gin.Context) {
@@ -30,10 +29,23 @@ func (h *UserHandler) CreateFriendships(c *gin.Context) {
 		return
 	}
 
-	if err := h.userController.CreateFriendships(req.UserID1, req.UserID2); err != nil {
+	//TODO: custom validator
+
+	if len(req.Friends) != 2 {
+		//todo: util method
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid body"}) //todo: use utils to handle
+		return
+	}
+
+	if req.Friends[0] == req.Friends[1] {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot befriend self"}) //todo: use utils to handle
+		return
+	}
+
+	if err := h.userController.CreateFriendships(req.Friends[0], req.Friends[1]); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"message": "Friendship created successfully"})
+	c.JSON(http.StatusCreated, gin.H{"success": true})
 }

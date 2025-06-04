@@ -16,8 +16,7 @@ func NewUserController(userRepo interfaces.UserRepositoryInterface) interfaces.U
     }
 }
 
-func (c *userController) CreateFriendships(userID1, userID2 int) error {
-    // Business logic validation
+func (c *userController) CreateFriendships(userID1, userID2 string) error {
     if userID1 == userID2 {
         return errors.New("cannot befriend yourself")
     }
@@ -32,6 +31,8 @@ func (c *userController) CreateFriendships(userID1, userID2 int) error {
     // if err != nil || user2 == nil {
     //     return errors.New("user2 not found")
     // }
+
+    // TODO: check if already friends
     
-    return c.userRepo.CreateFriendship(userID1, userID2)
+    return c.userRepo.CreateFriendship(userID1, userID2) //todo: pass email not id
 }

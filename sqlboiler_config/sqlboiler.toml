@@ -1,0 +1,15 @@
+[psql]
+dbname  = "assignment-db"
+host    = "localhost"
+port    = 5432
+user    = "postgres"
+pass    = "password"
+sslmode = "disable"
+blacklist = ["migrations"]
+
+# Output configuration
+pkgname = "models"
+output = "../internal/infrastructure/database/models"
+wipe     = true
+add-global-variants = true
+add-panic-variants  = true

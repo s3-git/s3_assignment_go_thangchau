@@ -3,7 +3,7 @@ package interfaces
 //import "assignment/internal/domain"
 
 type UserControllerInterface interface {
-    CreateFriendships(userID1, userID2 int) error
+    CreateFriendships(user1Email, user2Email string) error
     //GetFriendList(userID int) ([]*domain.User, error)
     //GetCommonFriends(userID1, userID2 int) ([]*domain.User, error)
     //Subscription(userID, targetID int) error
