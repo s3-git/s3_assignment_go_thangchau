@@ -1,10 +1,12 @@
+DROP TABLE IF EXISTS blocks, subscriptions, friendships, users CASCADE;
+
 CREATE TABLE "users" (
-  "id" integer PRIMARY KEY,
+  "id" SERIAL PRIMARY KEY,
   "email" varchar UNIQUE
 );
 
 CREATE TABLE "friendships" (
-  "id" integer PRIMARY KEY,
+  "id" SERIAL PRIMARY KEY,
   "user1_id" integer,
   "user2_id" integer,
 
@@ -13,13 +15,13 @@ CREATE TABLE "friendships" (
 );
 
 CREATE TABLE "subscriptions" (
-  "id" integer PRIMARY KEY,
+  "id" SERIAL PRIMARY KEY,
   "requestor_id" integer,
   "target_id" integer
 );
 
 CREATE TABLE "blocks" (
-  "id" integer PRIMARY KEY,
+  "id" SERIAL PRIMARY KEY,
   "requestor_id" integer,
   "target_id" integer
 );
@@ -40,8 +42,12 @@ ALTER TABLE "blocks" ADD FOREIGN KEY ("requestor_id") REFERENCES "users" ("id");
 
 ALTER TABLE "blocks" ADD FOREIGN KEY ("target_id") REFERENCES "users" ("id");
 
-INSERT INTO users VALUES("andy@mail.com")
-INSERT INTO users VALUES("alice@mail.com")
-INSERT INTO users VALUES("bob@mail.com")
-INSERT INTO users VALUES("jack@mail.com")
-INSERT INTO users VALUES("lisa@mail.com")
+INSERT INTO users (email) VALUES('andy@mail.com');
+
+INSERT INTO users (email) VALUES('alice@mail.com');
+
+INSERT INTO users (email) VALUES('bob@mail.com');
+
+INSERT INTO users (email) VALUES('jack@mail.com');
+
+INSERT INTO users (email) VALUES('lisa@mail.com');
