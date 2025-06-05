@@ -42,5 +42,17 @@ func (h *UserHandler) CreateFriendships(c *gin.Context) {
 }
 
 func (h *UserHandler) GetFriendList(c *gin.Context) {
+	var req entities.GetFriendListRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		return
+	}
+
+	v := validator.New()
+	if entities.ValidateGetFriendlistRequest(v, &req); !v.Valid() {
+		c.JSON(http.StatusBadRequest, gin.H{"error": v.Errors})
+		return
+	}
+
 	c.JSON(http.StatusCreated, gin.H{"success": true})
 }
