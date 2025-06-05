@@ -39,7 +39,7 @@ func main() {
 
 func initDB() (*sql.DB, error) {
 	//TODO: read from config env var
-	db, err := sql.Open("postgres", "host=localhost port=5432 user=postgres password=password dbname=assignment-db sslmode=disable")
+	db, err := sql.Open("postgres", "host=postgres port=5432 user=postgres password=password dbname=assignment-db sslmode=disable")
 	if err != nil {
 		return nil, err
 	}
