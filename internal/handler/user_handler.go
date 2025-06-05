@@ -3,6 +3,7 @@ package handler
 import (
 	"net/http"
 
+	"assignment/internal/domain/entities"
 	"assignment/internal/domain/interfaces"
 
 	"github.com/gin-gonic/gin"
@@ -18,27 +19,15 @@ func NewUserHandler(userController interfaces.UserControllerInterface) *UserHand
 	}
 }
 
-type CreateFriendshipRequest struct {
-	Friends []string `json:"friends"`
-}
-
 func (h *UserHandler) CreateFriendships(c *gin.Context) {
-	var req CreateFriendshipRequest
+	var req entities.CreateFriendshipRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
 		return
 	}
 
-	//TODO: custom validator
-
-	if len(req.Friends) != 2 {
-		//todo: util method
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"}) //todo: use utils to handle
-		return
-	}
-
-	if req.Friends[0] == req.Friends[1] {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot befriend self"}) //todo: use utils to handle
+	if err := req.Validate(); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 

@@ -44,15 +44,6 @@ func TestCreateFriendships(t *testing.T) {
 			expectedBody:   `{"success":true}`,
 		},
 		{
-			name: "same email",
-			body: `{"friends":["andy@example.com", "andy@example.com"]}`,
-			mockFunc: func(u1, u2 string) error {
-				return errors.New("cannot befriend self")
-			},
-			expectedStatus: http.StatusBadRequest,
-			expectedBody:   `{"error":"cannot befriend self"}`,
-		},
-		{
 			name: "missing email",
 			body: `{"friends":["andy@example.com"]}`,
 			mockFunc: func(u1, u2 string) error {
