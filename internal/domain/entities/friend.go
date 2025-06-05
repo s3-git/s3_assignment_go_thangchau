@@ -35,7 +35,7 @@ func (r *CreateFriendshipRequest) Validate() error {
 
 	// Email format validation
 	for _, email := range r.Friends {
-		if utils.ValidateEmail(email) {
+		if !utils.ValidateEmail(email) {
 			return fmt.Errorf("invalid email format: %s", email)
 		}
 	}

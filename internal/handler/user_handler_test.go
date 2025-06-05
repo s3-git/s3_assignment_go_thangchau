@@ -82,9 +82,9 @@ func TestCreateFriendships(t *testing.T) {
 			handler := NewUserHandler(mockController)
 
 			router := gin.New()
-			router.POST("/friendships", handler.CreateFriendships)
+			router.POST("/friend", handler.CreateFriendships)
 
-			req, err := http.NewRequest(http.MethodPost, "/friendships", bytes.NewBuffer([]byte(tt.body)))
+			req, err := http.NewRequest(http.MethodPost, "/friend", bytes.NewBuffer([]byte(tt.body)))
 			if err != nil {
 				t.Fatalf("failed to create request: %v", err)
 			}

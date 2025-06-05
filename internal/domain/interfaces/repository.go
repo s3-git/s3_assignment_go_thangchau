@@ -3,7 +3,7 @@ package interfaces
 //import "assignment/internal/domain"
 
 type UserRepositoryInterface interface {
-    CreateFriendship(userID1, userID2 string) error
+    CreateFriendship(user1Email, user2Email string) error
 }
 
 type Repositories interface {
