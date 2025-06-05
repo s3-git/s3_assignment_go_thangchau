@@ -23,3 +23,7 @@ func (c *userController) CreateFriendship(user1Email, user2Email string) error {
 
 	return c.userRepo.CreateFriendship(user1Email, user2Email)
 }
+
+func (c *userController) GetFriendList(email string) error {
+	return nil
+}

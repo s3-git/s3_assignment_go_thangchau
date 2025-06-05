@@ -49,7 +49,7 @@ func TestCreateFriendships(t *testing.T) {
 				return errors.New("invalid body")
 			},
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   `{"error":"exactly 2 friends required"}`,
+			expectedBody:   `{"error": {"friends":"exactly 2 friends required"}}`,
 		},
 		{
 			name: "internal server error",

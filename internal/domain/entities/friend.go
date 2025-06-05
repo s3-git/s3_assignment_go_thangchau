@@ -2,6 +2,7 @@ package entities
 
 import (
 	"assignment/pkg/utils"
+	"assignment/pkg/validator"
 	"errors"
 	"fmt"
 	"strings"
@@ -41,4 +42,17 @@ func (r *CreateFriendshipRequest) Validate() error {
 	}
 
 	return nil
+}
+
+func ValidateCreateFriendshipRequest(v *validator.Validator, r *CreateFriendshipRequest) {
+	v.Check(len(r.Friends) == 2, "friends", "exactly 2 friends required")
+
+	// Validate email
+	for _, email := range r.Friends {
+		validator.ValidateEmail(v, email)
+	}
+}
+
+type GetFriendListRequest struct {
+	Email string `json:"email"`
 }

@@ -16,7 +16,7 @@ func SetupRoutes(r *gin.Engine, controllers interfaces.Controllers) {
 		users := v1.Group("/user")
 		{
 			users.POST("/friends", handlers.UserHandler.CreateFriendships)
-			// users.POST("/friends/list", controllers.UserController.GetFriendList)
+			users.POST("/friends/list", handlers.UserHandler.GetFriendList)
 			// users.POST("/friends/common", controllers.UserController.GetCommonFriends)
 			// users.POST("/subscriptions", controllers.UserController.Subscription)
 			// users.POST("/blocks", controllers.UserController.Block)

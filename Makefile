@@ -7,6 +7,9 @@ test:
 up:
 	docker-compose up --build -d
 
+rebuild-api:
+	docker-compose up --build -d --force-recreate api
+
 down:
 	docker-compose down
 

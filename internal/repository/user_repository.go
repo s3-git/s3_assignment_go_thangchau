@@ -19,7 +19,7 @@ func NewUserRepository(db *sql.DB) interfaces.UserRepositoryInterface {
 	return &userRepository{db: db}
 }
 
-func (r *userRepository) CreateFriendship(user1Email, user2Email string) error {
+func (r *userRepository) CreateFriendship(user1Email, user2Email string) error {//TODO: some error status cannot be 500
 	// Get first user's ID
 	user1, err := models.Users(
 		qm.Select(models.UserColumns.ID),
@@ -69,5 +69,9 @@ func (r *userRepository) CreateFriendship(user1Email, user2Email string) error {
 		return err
 	}
 
+	return nil
+}
+
+func (r *userRepository) GetFriendList(email string) error {
 	return nil
 }

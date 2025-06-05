@@ -5,6 +5,7 @@ import (
 
 	"assignment/internal/domain/entities"
 	"assignment/internal/domain/interfaces"
+	"assignment/pkg/validator"
 
 	"github.com/gin-gonic/gin"
 )
@@ -26,8 +27,9 @@ func (h *UserHandler) CreateFriendships(c *gin.Context) {
 		return
 	}
 
-	if err := req.Validate(); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	v := validator.New()
+	if entities.ValidateCreateFriendshipRequest(v, &req); !v.Valid() {
+		c.JSON(http.StatusBadRequest, gin.H{"error": v.Errors})
 		return
 	}
 
@@ -36,5 +38,9 @@ func (h *UserHandler) CreateFriendships(c *gin.Context) {
 		return
 	}
 
+	c.JSON(http.StatusCreated, gin.H{"success": true})
+}
+
+func (h *UserHandler) GetFriendList(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"success": true})
 }
