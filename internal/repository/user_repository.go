@@ -18,6 +18,8 @@ func (r *userRepository) GetByID(id int) (entities.User, error) {
 	return entities.User{}, nil
 }
 
+
+//TODO: replace with sqlboiler
 func (r *userRepository) CreateFriendship(userID1, userID2 string) error {
 	query := "INSERT INTO friendships (user_id_1, user_id_2) VALUES ($1, $2)"
 	_, err := r.db.Exec(query, userID1, userID2)

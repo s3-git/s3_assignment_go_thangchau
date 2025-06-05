@@ -494,7 +494,7 @@ func testUsersInsertWhitelist(t *testing.T) {
 	}
 }
 
-func testUserToManyRequestorBlocks(t *testing.T) {
+func testUserToManyBlockedBlocks(t *testing.T) {
 	var err error
 	ctx := context.Background()
 	tx := MustTx(boil.BeginTx(ctx, nil))
@@ -519,8 +519,9 @@ func testUserToManyRequestorBlocks(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	queries.Assign(&b.RequestorID, a.ID)
-	queries.Assign(&c.RequestorID, a.ID)
+	b.BlockedID = a.ID
+	c.BlockedID = a.ID
+
 	if err = b.Insert(ctx, tx, boil.Infer()); err != nil {
 		t.Fatal(err)
 	}
@@ -528,17 +529,17 @@ func testUserToManyRequestorBlocks(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	check, err := a.RequestorBlocks().All(ctx, tx)
+	check, err := a.BlockedBlocks().All(ctx, tx)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	bFound, cFound := false, false
 	for _, v := range check {
-		if queries.Equal(v.RequestorID, b.RequestorID) {
+		if v.BlockedID == b.BlockedID {
 			bFound = true
 		}
-		if queries.Equal(v.RequestorID, c.RequestorID) {
+		if v.BlockedID == c.BlockedID {
 			cFound = true
 		}
 	}
@@ -551,18 +552,18 @@ func testUserToManyRequestorBlocks(t *testing.T) {
 	}
 
 	slice := UserSlice{&a}
-	if err = a.L.LoadRequestorBlocks(ctx, tx, false, (*[]*User)(&slice), nil); err != nil {
+	if err = a.L.LoadBlockedBlocks(ctx, tx, false, (*[]*User)(&slice), nil); err != nil {
 		t.Fatal(err)
 	}
-	if got := len(a.R.RequestorBlocks); got != 2 {
+	if got := len(a.R.BlockedBlocks); got != 2 {
 		t.Error("number of eager loaded records wrong, got:", got)
 	}
 
-	a.R.RequestorBlocks = nil
-	if err = a.L.LoadRequestorBlocks(ctx, tx, true, &a, nil); err != nil {
+	a.R.BlockedBlocks = nil
+	if err = a.L.LoadBlockedBlocks(ctx, tx, true, &a, nil); err != nil {
 		t.Fatal(err)
 	}
-	if got := len(a.R.RequestorBlocks); got != 2 {
+	if got := len(a.R.BlockedBlocks); got != 2 {
 		t.Error("number of eager loaded records wrong, got:", got)
 	}
 
@@ -571,7 +572,7 @@ func testUserToManyRequestorBlocks(t *testing.T) {
 	}
 }
 
-func testUserToManyTargetBlocks(t *testing.T) {
+func testUserToManyBlockerBlocks(t *testing.T) {
 	var err error
 	ctx := context.Background()
 	tx := MustTx(boil.BeginTx(ctx, nil))
@@ -596,8 +597,9 @@ func testUserToManyTargetBlocks(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	queries.Assign(&b.TargetID, a.ID)
-	queries.Assign(&c.TargetID, a.ID)
+	b.BlockerID = a.ID
+	c.BlockerID = a.ID
+
 	if err = b.Insert(ctx, tx, boil.Infer()); err != nil {
 		t.Fatal(err)
 	}
@@ -605,17 +607,17 @@ func testUserToManyTargetBlocks(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	check, err := a.TargetBlocks().All(ctx, tx)
+	check, err := a.BlockerBlocks().All(ctx, tx)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	bFound, cFound := false, false
 	for _, v := range check {
-		if queries.Equal(v.TargetID, b.TargetID) {
+		if v.BlockerID == b.BlockerID {
 			bFound = true
 		}
-		if queries.Equal(v.TargetID, c.TargetID) {
+		if v.BlockerID == c.BlockerID {
 			cFound = true
 		}
 	}
@@ -628,18 +630,18 @@ func testUserToManyTargetBlocks(t *testing.T) {
 	}
 
 	slice := UserSlice{&a}
-	if err = a.L.LoadTargetBlocks(ctx, tx, false, (*[]*User)(&slice), nil); err != nil {
+	if err = a.L.LoadBlockerBlocks(ctx, tx, false, (*[]*User)(&slice), nil); err != nil {
 		t.Fatal(err)
 	}
-	if got := len(a.R.TargetBlocks); got != 2 {
+	if got := len(a.R.BlockerBlocks); got != 2 {
 		t.Error("number of eager loaded records wrong, got:", got)
 	}
 
-	a.R.TargetBlocks = nil
-	if err = a.L.LoadTargetBlocks(ctx, tx, true, &a, nil); err != nil {
+	a.R.BlockerBlocks = nil
+	if err = a.L.LoadBlockerBlocks(ctx, tx, true, &a, nil); err != nil {
 		t.Fatal(err)
 	}
-	if got := len(a.R.TargetBlocks); got != 2 {
+	if got := len(a.R.BlockerBlocks); got != 2 {
 		t.Error("number of eager loaded records wrong, got:", got)
 	}
 
@@ -648,14 +650,14 @@ func testUserToManyTargetBlocks(t *testing.T) {
 	}
 }
 
-func testUserToManyUser1Friendships(t *testing.T) {
+func testUserToManyUser1Friends(t *testing.T) {
 	var err error
 	ctx := context.Background()
 	tx := MustTx(boil.BeginTx(ctx, nil))
 	defer func() { _ = tx.Rollback() }()
 
 	var a User
-	var b, c Friendship
+	var b, c Friend
 
 	seed := randomize.NewSeed()
 	if err = randomize.Struct(seed, &a, userDBTypes, true, userColumnsWithDefault...); err != nil {
@@ -666,15 +668,16 @@ func testUserToManyUser1Friendships(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err = randomize.Struct(seed, &b, friendshipDBTypes, false, friendshipColumnsWithDefault...); err != nil {
+	if err = randomize.Struct(seed, &b, friendDBTypes, false, friendColumnsWithDefault...); err != nil {
 		t.Fatal(err)
 	}
-	if err = randomize.Struct(seed, &c, friendshipDBTypes, false, friendshipColumnsWithDefault...); err != nil {
+	if err = randomize.Struct(seed, &c, friendDBTypes, false, friendColumnsWithDefault...); err != nil {
 		t.Fatal(err)
 	}
 
-	queries.Assign(&b.User1ID, a.ID)
-	queries.Assign(&c.User1ID, a.ID)
+	b.User1ID = a.ID
+	c.User1ID = a.ID
+
 	if err = b.Insert(ctx, tx, boil.Infer()); err != nil {
 		t.Fatal(err)
 	}
@@ -682,17 +685,17 @@ func testUserToManyUser1Friendships(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	check, err := a.User1Friendships().All(ctx, tx)
+	check, err := a.User1Friends().All(ctx, tx)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	bFound, cFound := false, false
 	for _, v := range check {
-		if queries.Equal(v.User1ID, b.User1ID) {
+		if v.User1ID == b.User1ID {
 			bFound = true
 		}
-		if queries.Equal(v.User1ID, c.User1ID) {
+		if v.User1ID == c.User1ID {
 			cFound = true
 		}
 	}
@@ -705,18 +708,18 @@ func testUserToManyUser1Friendships(t *testing.T) {
 	}
 
 	slice := UserSlice{&a}
-	if err = a.L.LoadUser1Friendships(ctx, tx, false, (*[]*User)(&slice), nil); err != nil {
+	if err = a.L.LoadUser1Friends(ctx, tx, false, (*[]*User)(&slice), nil); err != nil {
 		t.Fatal(err)
 	}
-	if got := len(a.R.User1Friendships); got != 2 {
+	if got := len(a.R.User1Friends); got != 2 {
 		t.Error("number of eager loaded records wrong, got:", got)
 	}
 
-	a.R.User1Friendships = nil
-	if err = a.L.LoadUser1Friendships(ctx, tx, true, &a, nil); err != nil {
+	a.R.User1Friends = nil
+	if err = a.L.LoadUser1Friends(ctx, tx, true, &a, nil); err != nil {
 		t.Fatal(err)
 	}
-	if got := len(a.R.User1Friendships); got != 2 {
+	if got := len(a.R.User1Friends); got != 2 {
 		t.Error("number of eager loaded records wrong, got:", got)
 	}
 
@@ -725,14 +728,14 @@ func testUserToManyUser1Friendships(t *testing.T) {
 	}
 }
 
-func testUserToManyUser2Friendships(t *testing.T) {
+func testUserToManyUser2Friends(t *testing.T) {
 	var err error
 	ctx := context.Background()
 	tx := MustTx(boil.BeginTx(ctx, nil))
 	defer func() { _ = tx.Rollback() }()
 
 	var a User
-	var b, c Friendship
+	var b, c Friend
 
 	seed := randomize.NewSeed()
 	if err = randomize.Struct(seed, &a, userDBTypes, true, userColumnsWithDefault...); err != nil {
@@ -743,15 +746,16 @@ func testUserToManyUser2Friendships(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err = randomize.Struct(seed, &b, friendshipDBTypes, false, friendshipColumnsWithDefault...); err != nil {
+	if err = randomize.Struct(seed, &b, friendDBTypes, false, friendColumnsWithDefault...); err != nil {
 		t.Fatal(err)
 	}
-	if err = randomize.Struct(seed, &c, friendshipDBTypes, false, friendshipColumnsWithDefault...); err != nil {
+	if err = randomize.Struct(seed, &c, friendDBTypes, false, friendColumnsWithDefault...); err != nil {
 		t.Fatal(err)
 	}
 
-	queries.Assign(&b.User2ID, a.ID)
-	queries.Assign(&c.User2ID, a.ID)
+	b.User2ID = a.ID
+	c.User2ID = a.ID
+
 	if err = b.Insert(ctx, tx, boil.Infer()); err != nil {
 		t.Fatal(err)
 	}
@@ -759,17 +763,17 @@ func testUserToManyUser2Friendships(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	check, err := a.User2Friendships().All(ctx, tx)
+	check, err := a.User2Friends().All(ctx, tx)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	bFound, cFound := false, false
 	for _, v := range check {
-		if queries.Equal(v.User2ID, b.User2ID) {
+		if v.User2ID == b.User2ID {
 			bFound = true
 		}
-		if queries.Equal(v.User2ID, c.User2ID) {
+		if v.User2ID == c.User2ID {
 			cFound = true
 		}
 	}
@@ -782,18 +786,18 @@ func testUserToManyUser2Friendships(t *testing.T) {
 	}
 
 	slice := UserSlice{&a}
-	if err = a.L.LoadUser2Friendships(ctx, tx, false, (*[]*User)(&slice), nil); err != nil {
+	if err = a.L.LoadUser2Friends(ctx, tx, false, (*[]*User)(&slice), nil); err != nil {
 		t.Fatal(err)
 	}
-	if got := len(a.R.User2Friendships); got != 2 {
+	if got := len(a.R.User2Friends); got != 2 {
 		t.Error("number of eager loaded records wrong, got:", got)
 	}
 
-	a.R.User2Friendships = nil
-	if err = a.L.LoadUser2Friendships(ctx, tx, true, &a, nil); err != nil {
+	a.R.User2Friends = nil
+	if err = a.L.LoadUser2Friends(ctx, tx, true, &a, nil); err != nil {
 		t.Fatal(err)
 	}
-	if got := len(a.R.User2Friendships); got != 2 {
+	if got := len(a.R.User2Friends); got != 2 {
 		t.Error("number of eager loaded records wrong, got:", got)
 	}
 
@@ -802,7 +806,7 @@ func testUserToManyUser2Friendships(t *testing.T) {
 	}
 }
 
-func testUserToManyRequestorSubscriptions(t *testing.T) {
+func testUserToManySubscriberSubscriptions(t *testing.T) {
 	var err error
 	ctx := context.Background()
 	tx := MustTx(boil.BeginTx(ctx, nil))
@@ -827,8 +831,9 @@ func testUserToManyRequestorSubscriptions(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	queries.Assign(&b.RequestorID, a.ID)
-	queries.Assign(&c.RequestorID, a.ID)
+	b.SubscriberID = a.ID
+	c.SubscriberID = a.ID
+
 	if err = b.Insert(ctx, tx, boil.Infer()); err != nil {
 		t.Fatal(err)
 	}
@@ -836,17 +841,17 @@ func testUserToManyRequestorSubscriptions(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	check, err := a.RequestorSubscriptions().All(ctx, tx)
+	check, err := a.SubscriberSubscriptions().All(ctx, tx)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	bFound, cFound := false, false
 	for _, v := range check {
-		if queries.Equal(v.RequestorID, b.RequestorID) {
+		if v.SubscriberID == b.SubscriberID {
 			bFound = true
 		}
-		if queries.Equal(v.RequestorID, c.RequestorID) {
+		if v.SubscriberID == c.SubscriberID {
 			cFound = true
 		}
 	}
@@ -859,18 +864,18 @@ func testUserToManyRequestorSubscriptions(t *testing.T) {
 	}
 
 	slice := UserSlice{&a}
-	if err = a.L.LoadRequestorSubscriptions(ctx, tx, false, (*[]*User)(&slice), nil); err != nil {
+	if err = a.L.LoadSubscriberSubscriptions(ctx, tx, false, (*[]*User)(&slice), nil); err != nil {
 		t.Fatal(err)
 	}
-	if got := len(a.R.RequestorSubscriptions); got != 2 {
+	if got := len(a.R.SubscriberSubscriptions); got != 2 {
 		t.Error("number of eager loaded records wrong, got:", got)
 	}
 
-	a.R.RequestorSubscriptions = nil
-	if err = a.L.LoadRequestorSubscriptions(ctx, tx, true, &a, nil); err != nil {
+	a.R.SubscriberSubscriptions = nil
+	if err = a.L.LoadSubscriberSubscriptions(ctx, tx, true, &a, nil); err != nil {
 		t.Fatal(err)
 	}
-	if got := len(a.R.RequestorSubscriptions); got != 2 {
+	if got := len(a.R.SubscriberSubscriptions); got != 2 {
 		t.Error("number of eager loaded records wrong, got:", got)
 	}
 
@@ -904,8 +909,9 @@ func testUserToManyTargetSubscriptions(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	queries.Assign(&b.TargetID, a.ID)
-	queries.Assign(&c.TargetID, a.ID)
+	b.TargetID = a.ID
+	c.TargetID = a.ID
+
 	if err = b.Insert(ctx, tx, boil.Infer()); err != nil {
 		t.Fatal(err)
 	}
@@ -920,10 +926,10 @@ func testUserToManyTargetSubscriptions(t *testing.T) {
 
 	bFound, cFound := false, false
 	for _, v := range check {
-		if queries.Equal(v.TargetID, b.TargetID) {
+		if v.TargetID == b.TargetID {
 			bFound = true
 		}
-		if queries.Equal(v.TargetID, c.TargetID) {
+		if v.TargetID == c.TargetID {
 			cFound = true
 		}
 	}
@@ -956,7 +962,7 @@ func testUserToManyTargetSubscriptions(t *testing.T) {
 	}
 }
 
-func testUserToManyAddOpRequestorBlocks(t *testing.T) {
+func testUserToManyAddOpBlockedBlocks(t *testing.T) {
 	var err error
 
 	ctx := context.Background()
@@ -993,7 +999,7 @@ func testUserToManyAddOpRequestorBlocks(t *testing.T) {
 	}
 
 	for i, x := range foreignersSplitByInsertion {
-		err = a.AddRequestorBlocks(ctx, tx, i != 0, x...)
+		err = a.AddBlockedBlocks(ctx, tx, i != 0, x...)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1001,28 +1007,28 @@ func testUserToManyAddOpRequestorBlocks(t *testing.T) {
 		first := x[0]
 		second := x[1]
 
-		if !queries.Equal(a.ID, first.RequestorID) {
-			t.Error("foreign key was wrong value", a.ID, first.RequestorID)
+		if a.ID != first.BlockedID {
+			t.Error("foreign key was wrong value", a.ID, first.BlockedID)
 		}
-		if !queries.Equal(a.ID, second.RequestorID) {
-			t.Error("foreign key was wrong value", a.ID, second.RequestorID)
+		if a.ID != second.BlockedID {
+			t.Error("foreign key was wrong value", a.ID, second.BlockedID)
 		}
 
-		if first.R.Requestor != &a {
+		if first.R.Blocked != &a {
 			t.Error("relationship was not added properly to the foreign slice")
 		}
-		if second.R.Requestor != &a {
+		if second.R.Blocked != &a {
 			t.Error("relationship was not added properly to the foreign slice")
 		}
 
-		if a.R.RequestorBlocks[i*2] != first {
+		if a.R.BlockedBlocks[i*2] != first {
 			t.Error("relationship struct slice not set to correct value")
 		}
-		if a.R.RequestorBlocks[i*2+1] != second {
+		if a.R.BlockedBlocks[i*2+1] != second {
 			t.Error("relationship struct slice not set to correct value")
 		}
 
-		count, err := a.RequestorBlocks().Count(ctx, tx)
+		count, err := a.BlockedBlocks().Count(ctx, tx)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1031,183 +1037,7 @@ func testUserToManyAddOpRequestorBlocks(t *testing.T) {
 		}
 	}
 }
-
-func testUserToManySetOpRequestorBlocks(t *testing.T) {
-	var err error
-
-	ctx := context.Background()
-	tx := MustTx(boil.BeginTx(ctx, nil))
-	defer func() { _ = tx.Rollback() }()
-
-	var a User
-	var b, c, d, e Block
-
-	seed := randomize.NewSeed()
-	if err = randomize.Struct(seed, &a, userDBTypes, false, strmangle.SetComplement(userPrimaryKeyColumns, userColumnsWithoutDefault)...); err != nil {
-		t.Fatal(err)
-	}
-	foreigners := []*Block{&b, &c, &d, &e}
-	for _, x := range foreigners {
-		if err = randomize.Struct(seed, x, blockDBTypes, false, strmangle.SetComplement(blockPrimaryKeyColumns, blockColumnsWithoutDefault)...); err != nil {
-			t.Fatal(err)
-		}
-	}
-
-	if err = a.Insert(ctx, tx, boil.Infer()); err != nil {
-		t.Fatal(err)
-	}
-	if err = b.Insert(ctx, tx, boil.Infer()); err != nil {
-		t.Fatal(err)
-	}
-	if err = c.Insert(ctx, tx, boil.Infer()); err != nil {
-		t.Fatal(err)
-	}
-
-	err = a.SetRequestorBlocks(ctx, tx, false, &b, &c)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	count, err := a.RequestorBlocks().Count(ctx, tx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if count != 2 {
-		t.Error("count was wrong:", count)
-	}
-
-	err = a.SetRequestorBlocks(ctx, tx, true, &d, &e)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	count, err = a.RequestorBlocks().Count(ctx, tx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if count != 2 {
-		t.Error("count was wrong:", count)
-	}
-
-	if !queries.IsValuerNil(b.RequestorID) {
-		t.Error("want b's foreign key value to be nil")
-	}
-	if !queries.IsValuerNil(c.RequestorID) {
-		t.Error("want c's foreign key value to be nil")
-	}
-	if !queries.Equal(a.ID, d.RequestorID) {
-		t.Error("foreign key was wrong value", a.ID, d.RequestorID)
-	}
-	if !queries.Equal(a.ID, e.RequestorID) {
-		t.Error("foreign key was wrong value", a.ID, e.RequestorID)
-	}
-
-	if b.R.Requestor != nil {
-		t.Error("relationship was not removed properly from the foreign struct")
-	}
-	if c.R.Requestor != nil {
-		t.Error("relationship was not removed properly from the foreign struct")
-	}
-	if d.R.Requestor != &a {
-		t.Error("relationship was not added properly to the foreign struct")
-	}
-	if e.R.Requestor != &a {
-		t.Error("relationship was not added properly to the foreign struct")
-	}
-
-	if a.R.RequestorBlocks[0] != &d {
-		t.Error("relationship struct slice not set to correct value")
-	}
-	if a.R.RequestorBlocks[1] != &e {
-		t.Error("relationship struct slice not set to correct value")
-	}
-}
-
-func testUserToManyRemoveOpRequestorBlocks(t *testing.T) {
-	var err error
-
-	ctx := context.Background()
-	tx := MustTx(boil.BeginTx(ctx, nil))
-	defer func() { _ = tx.Rollback() }()
-
-	var a User
-	var b, c, d, e Block
-
-	seed := randomize.NewSeed()
-	if err = randomize.Struct(seed, &a, userDBTypes, false, strmangle.SetComplement(userPrimaryKeyColumns, userColumnsWithoutDefault)...); err != nil {
-		t.Fatal(err)
-	}
-	foreigners := []*Block{&b, &c, &d, &e}
-	for _, x := range foreigners {
-		if err = randomize.Struct(seed, x, blockDBTypes, false, strmangle.SetComplement(blockPrimaryKeyColumns, blockColumnsWithoutDefault)...); err != nil {
-			t.Fatal(err)
-		}
-	}
-
-	if err := a.Insert(ctx, tx, boil.Infer()); err != nil {
-		t.Fatal(err)
-	}
-
-	err = a.AddRequestorBlocks(ctx, tx, true, foreigners...)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	count, err := a.RequestorBlocks().Count(ctx, tx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if count != 4 {
-		t.Error("count was wrong:", count)
-	}
-
-	err = a.RemoveRequestorBlocks(ctx, tx, foreigners[:2]...)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	count, err = a.RequestorBlocks().Count(ctx, tx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if count != 2 {
-		t.Error("count was wrong:", count)
-	}
-
-	if !queries.IsValuerNil(b.RequestorID) {
-		t.Error("want b's foreign key value to be nil")
-	}
-	if !queries.IsValuerNil(c.RequestorID) {
-		t.Error("want c's foreign key value to be nil")
-	}
-
-	if b.R.Requestor != nil {
-		t.Error("relationship was not removed properly from the foreign struct")
-	}
-	if c.R.Requestor != nil {
-		t.Error("relationship was not removed properly from the foreign struct")
-	}
-	if d.R.Requestor != &a {
-		t.Error("relationship to a should have been preserved")
-	}
-	if e.R.Requestor != &a {
-		t.Error("relationship to a should have been preserved")
-	}
-
-	if len(a.R.RequestorBlocks) != 2 {
-		t.Error("should have preserved two relationships")
-	}
-
-	// Removal doesn't do a stable deletion for performance so we have to flip the order
-	if a.R.RequestorBlocks[1] != &d {
-		t.Error("relationship to d should have been preserved")
-	}
-	if a.R.RequestorBlocks[0] != &e {
-		t.Error("relationship to e should have been preserved")
-	}
-}
-
-func testUserToManyAddOpTargetBlocks(t *testing.T) {
+func testUserToManyAddOpBlockerBlocks(t *testing.T) {
 	var err error
 
 	ctx := context.Background()
@@ -1244,7 +1074,7 @@ func testUserToManyAddOpTargetBlocks(t *testing.T) {
 	}
 
 	for i, x := range foreignersSplitByInsertion {
-		err = a.AddTargetBlocks(ctx, tx, i != 0, x...)
+		err = a.AddBlockerBlocks(ctx, tx, i != 0, x...)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1252,28 +1082,28 @@ func testUserToManyAddOpTargetBlocks(t *testing.T) {
 		first := x[0]
 		second := x[1]
 
-		if !queries.Equal(a.ID, first.TargetID) {
-			t.Error("foreign key was wrong value", a.ID, first.TargetID)
+		if a.ID != first.BlockerID {
+			t.Error("foreign key was wrong value", a.ID, first.BlockerID)
 		}
-		if !queries.Equal(a.ID, second.TargetID) {
-			t.Error("foreign key was wrong value", a.ID, second.TargetID)
+		if a.ID != second.BlockerID {
+			t.Error("foreign key was wrong value", a.ID, second.BlockerID)
 		}
 
-		if first.R.Target != &a {
+		if first.R.Blocker != &a {
 			t.Error("relationship was not added properly to the foreign slice")
 		}
-		if second.R.Target != &a {
+		if second.R.Blocker != &a {
 			t.Error("relationship was not added properly to the foreign slice")
 		}
 
-		if a.R.TargetBlocks[i*2] != first {
+		if a.R.BlockerBlocks[i*2] != first {
 			t.Error("relationship struct slice not set to correct value")
 		}
-		if a.R.TargetBlocks[i*2+1] != second {
+		if a.R.BlockerBlocks[i*2+1] != second {
 			t.Error("relationship struct slice not set to correct value")
 		}
 
-		count, err := a.TargetBlocks().Count(ctx, tx)
+		count, err := a.BlockerBlocks().Count(ctx, tx)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1282,8 +1112,7 @@ func testUserToManyAddOpTargetBlocks(t *testing.T) {
 		}
 	}
 }
-
-func testUserToManySetOpTargetBlocks(t *testing.T) {
+func testUserToManyAddOpUser1Friends(t *testing.T) {
 	var err error
 
 	ctx := context.Background()
@@ -1291,190 +1120,15 @@ func testUserToManySetOpTargetBlocks(t *testing.T) {
 	defer func() { _ = tx.Rollback() }()
 
 	var a User
-	var b, c, d, e Block
+	var b, c, d, e Friend
 
 	seed := randomize.NewSeed()
 	if err = randomize.Struct(seed, &a, userDBTypes, false, strmangle.SetComplement(userPrimaryKeyColumns, userColumnsWithoutDefault)...); err != nil {
 		t.Fatal(err)
 	}
-	foreigners := []*Block{&b, &c, &d, &e}
+	foreigners := []*Friend{&b, &c, &d, &e}
 	for _, x := range foreigners {
-		if err = randomize.Struct(seed, x, blockDBTypes, false, strmangle.SetComplement(blockPrimaryKeyColumns, blockColumnsWithoutDefault)...); err != nil {
-			t.Fatal(err)
-		}
-	}
-
-	if err = a.Insert(ctx, tx, boil.Infer()); err != nil {
-		t.Fatal(err)
-	}
-	if err = b.Insert(ctx, tx, boil.Infer()); err != nil {
-		t.Fatal(err)
-	}
-	if err = c.Insert(ctx, tx, boil.Infer()); err != nil {
-		t.Fatal(err)
-	}
-
-	err = a.SetTargetBlocks(ctx, tx, false, &b, &c)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	count, err := a.TargetBlocks().Count(ctx, tx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if count != 2 {
-		t.Error("count was wrong:", count)
-	}
-
-	err = a.SetTargetBlocks(ctx, tx, true, &d, &e)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	count, err = a.TargetBlocks().Count(ctx, tx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if count != 2 {
-		t.Error("count was wrong:", count)
-	}
-
-	if !queries.IsValuerNil(b.TargetID) {
-		t.Error("want b's foreign key value to be nil")
-	}
-	if !queries.IsValuerNil(c.TargetID) {
-		t.Error("want c's foreign key value to be nil")
-	}
-	if !queries.Equal(a.ID, d.TargetID) {
-		t.Error("foreign key was wrong value", a.ID, d.TargetID)
-	}
-	if !queries.Equal(a.ID, e.TargetID) {
-		t.Error("foreign key was wrong value", a.ID, e.TargetID)
-	}
-
-	if b.R.Target != nil {
-		t.Error("relationship was not removed properly from the foreign struct")
-	}
-	if c.R.Target != nil {
-		t.Error("relationship was not removed properly from the foreign struct")
-	}
-	if d.R.Target != &a {
-		t.Error("relationship was not added properly to the foreign struct")
-	}
-	if e.R.Target != &a {
-		t.Error("relationship was not added properly to the foreign struct")
-	}
-
-	if a.R.TargetBlocks[0] != &d {
-		t.Error("relationship struct slice not set to correct value")
-	}
-	if a.R.TargetBlocks[1] != &e {
-		t.Error("relationship struct slice not set to correct value")
-	}
-}
-
-func testUserToManyRemoveOpTargetBlocks(t *testing.T) {
-	var err error
-
-	ctx := context.Background()
-	tx := MustTx(boil.BeginTx(ctx, nil))
-	defer func() { _ = tx.Rollback() }()
-
-	var a User
-	var b, c, d, e Block
-
-	seed := randomize.NewSeed()
-	if err = randomize.Struct(seed, &a, userDBTypes, false, strmangle.SetComplement(userPrimaryKeyColumns, userColumnsWithoutDefault)...); err != nil {
-		t.Fatal(err)
-	}
-	foreigners := []*Block{&b, &c, &d, &e}
-	for _, x := range foreigners {
-		if err = randomize.Struct(seed, x, blockDBTypes, false, strmangle.SetComplement(blockPrimaryKeyColumns, blockColumnsWithoutDefault)...); err != nil {
-			t.Fatal(err)
-		}
-	}
-
-	if err := a.Insert(ctx, tx, boil.Infer()); err != nil {
-		t.Fatal(err)
-	}
-
-	err = a.AddTargetBlocks(ctx, tx, true, foreigners...)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	count, err := a.TargetBlocks().Count(ctx, tx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if count != 4 {
-		t.Error("count was wrong:", count)
-	}
-
-	err = a.RemoveTargetBlocks(ctx, tx, foreigners[:2]...)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	count, err = a.TargetBlocks().Count(ctx, tx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if count != 2 {
-		t.Error("count was wrong:", count)
-	}
-
-	if !queries.IsValuerNil(b.TargetID) {
-		t.Error("want b's foreign key value to be nil")
-	}
-	if !queries.IsValuerNil(c.TargetID) {
-		t.Error("want c's foreign key value to be nil")
-	}
-
-	if b.R.Target != nil {
-		t.Error("relationship was not removed properly from the foreign struct")
-	}
-	if c.R.Target != nil {
-		t.Error("relationship was not removed properly from the foreign struct")
-	}
-	if d.R.Target != &a {
-		t.Error("relationship to a should have been preserved")
-	}
-	if e.R.Target != &a {
-		t.Error("relationship to a should have been preserved")
-	}
-
-	if len(a.R.TargetBlocks) != 2 {
-		t.Error("should have preserved two relationships")
-	}
-
-	// Removal doesn't do a stable deletion for performance so we have to flip the order
-	if a.R.TargetBlocks[1] != &d {
-		t.Error("relationship to d should have been preserved")
-	}
-	if a.R.TargetBlocks[0] != &e {
-		t.Error("relationship to e should have been preserved")
-	}
-}
-
-func testUserToManyAddOpUser1Friendships(t *testing.T) {
-	var err error
-
-	ctx := context.Background()
-	tx := MustTx(boil.BeginTx(ctx, nil))
-	defer func() { _ = tx.Rollback() }()
-
-	var a User
-	var b, c, d, e Friendship
-
-	seed := randomize.NewSeed()
-	if err = randomize.Struct(seed, &a, userDBTypes, false, strmangle.SetComplement(userPrimaryKeyColumns, userColumnsWithoutDefault)...); err != nil {
-		t.Fatal(err)
-	}
-	foreigners := []*Friendship{&b, &c, &d, &e}
-	for _, x := range foreigners {
-		if err = randomize.Struct(seed, x, friendshipDBTypes, false, strmangle.SetComplement(friendshipPrimaryKeyColumns, friendshipColumnsWithoutDefault)...); err != nil {
+		if err = randomize.Struct(seed, x, friendDBTypes, false, strmangle.SetComplement(friendPrimaryKeyColumns, friendColumnsWithoutDefault)...); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -1489,13 +1143,13 @@ func testUserToManyAddOpUser1Friendships(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	foreignersSplitByInsertion := [][]*Friendship{
+	foreignersSplitByInsertion := [][]*Friend{
 		{&b, &c},
 		{&d, &e},
 	}
 
 	for i, x := range foreignersSplitByInsertion {
-		err = a.AddUser1Friendships(ctx, tx, i != 0, x...)
+		err = a.AddUser1Friends(ctx, tx, i != 0, x...)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1503,10 +1157,10 @@ func testUserToManyAddOpUser1Friendships(t *testing.T) {
 		first := x[0]
 		second := x[1]
 
-		if !queries.Equal(a.ID, first.User1ID) {
+		if a.ID != first.User1ID {
 			t.Error("foreign key was wrong value", a.ID, first.User1ID)
 		}
-		if !queries.Equal(a.ID, second.User1ID) {
+		if a.ID != second.User1ID {
 			t.Error("foreign key was wrong value", a.ID, second.User1ID)
 		}
 
@@ -1517,14 +1171,14 @@ func testUserToManyAddOpUser1Friendships(t *testing.T) {
 			t.Error("relationship was not added properly to the foreign slice")
 		}
 
-		if a.R.User1Friendships[i*2] != first {
+		if a.R.User1Friends[i*2] != first {
 			t.Error("relationship struct slice not set to correct value")
 		}
-		if a.R.User1Friendships[i*2+1] != second {
+		if a.R.User1Friends[i*2+1] != second {
 			t.Error("relationship struct slice not set to correct value")
 		}
 
-		count, err := a.User1Friendships().Count(ctx, tx)
+		count, err := a.User1Friends().Count(ctx, tx)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1533,8 +1187,7 @@ func testUserToManyAddOpUser1Friendships(t *testing.T) {
 		}
 	}
 }
-
-func testUserToManySetOpUser1Friendships(t *testing.T) {
+func testUserToManyAddOpUser2Friends(t *testing.T) {
 	var err error
 
 	ctx := context.Background()
@@ -1542,190 +1195,15 @@ func testUserToManySetOpUser1Friendships(t *testing.T) {
 	defer func() { _ = tx.Rollback() }()
 
 	var a User
-	var b, c, d, e Friendship
+	var b, c, d, e Friend
 
 	seed := randomize.NewSeed()
 	if err = randomize.Struct(seed, &a, userDBTypes, false, strmangle.SetComplement(userPrimaryKeyColumns, userColumnsWithoutDefault)...); err != nil {
 		t.Fatal(err)
 	}
-	foreigners := []*Friendship{&b, &c, &d, &e}
+	foreigners := []*Friend{&b, &c, &d, &e}
 	for _, x := range foreigners {
-		if err = randomize.Struct(seed, x, friendshipDBTypes, false, strmangle.SetComplement(friendshipPrimaryKeyColumns, friendshipColumnsWithoutDefault)...); err != nil {
-			t.Fatal(err)
-		}
-	}
-
-	if err = a.Insert(ctx, tx, boil.Infer()); err != nil {
-		t.Fatal(err)
-	}
-	if err = b.Insert(ctx, tx, boil.Infer()); err != nil {
-		t.Fatal(err)
-	}
-	if err = c.Insert(ctx, tx, boil.Infer()); err != nil {
-		t.Fatal(err)
-	}
-
-	err = a.SetUser1Friendships(ctx, tx, false, &b, &c)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	count, err := a.User1Friendships().Count(ctx, tx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if count != 2 {
-		t.Error("count was wrong:", count)
-	}
-
-	err = a.SetUser1Friendships(ctx, tx, true, &d, &e)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	count, err = a.User1Friendships().Count(ctx, tx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if count != 2 {
-		t.Error("count was wrong:", count)
-	}
-
-	if !queries.IsValuerNil(b.User1ID) {
-		t.Error("want b's foreign key value to be nil")
-	}
-	if !queries.IsValuerNil(c.User1ID) {
-		t.Error("want c's foreign key value to be nil")
-	}
-	if !queries.Equal(a.ID, d.User1ID) {
-		t.Error("foreign key was wrong value", a.ID, d.User1ID)
-	}
-	if !queries.Equal(a.ID, e.User1ID) {
-		t.Error("foreign key was wrong value", a.ID, e.User1ID)
-	}
-
-	if b.R.User1 != nil {
-		t.Error("relationship was not removed properly from the foreign struct")
-	}
-	if c.R.User1 != nil {
-		t.Error("relationship was not removed properly from the foreign struct")
-	}
-	if d.R.User1 != &a {
-		t.Error("relationship was not added properly to the foreign struct")
-	}
-	if e.R.User1 != &a {
-		t.Error("relationship was not added properly to the foreign struct")
-	}
-
-	if a.R.User1Friendships[0] != &d {
-		t.Error("relationship struct slice not set to correct value")
-	}
-	if a.R.User1Friendships[1] != &e {
-		t.Error("relationship struct slice not set to correct value")
-	}
-}
-
-func testUserToManyRemoveOpUser1Friendships(t *testing.T) {
-	var err error
-
-	ctx := context.Background()
-	tx := MustTx(boil.BeginTx(ctx, nil))
-	defer func() { _ = tx.Rollback() }()
-
-	var a User
-	var b, c, d, e Friendship
-
-	seed := randomize.NewSeed()
-	if err = randomize.Struct(seed, &a, userDBTypes, false, strmangle.SetComplement(userPrimaryKeyColumns, userColumnsWithoutDefault)...); err != nil {
-		t.Fatal(err)
-	}
-	foreigners := []*Friendship{&b, &c, &d, &e}
-	for _, x := range foreigners {
-		if err = randomize.Struct(seed, x, friendshipDBTypes, false, strmangle.SetComplement(friendshipPrimaryKeyColumns, friendshipColumnsWithoutDefault)...); err != nil {
-			t.Fatal(err)
-		}
-	}
-
-	if err := a.Insert(ctx, tx, boil.Infer()); err != nil {
-		t.Fatal(err)
-	}
-
-	err = a.AddUser1Friendships(ctx, tx, true, foreigners...)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	count, err := a.User1Friendships().Count(ctx, tx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if count != 4 {
-		t.Error("count was wrong:", count)
-	}
-
-	err = a.RemoveUser1Friendships(ctx, tx, foreigners[:2]...)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	count, err = a.User1Friendships().Count(ctx, tx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if count != 2 {
-		t.Error("count was wrong:", count)
-	}
-
-	if !queries.IsValuerNil(b.User1ID) {
-		t.Error("want b's foreign key value to be nil")
-	}
-	if !queries.IsValuerNil(c.User1ID) {
-		t.Error("want c's foreign key value to be nil")
-	}
-
-	if b.R.User1 != nil {
-		t.Error("relationship was not removed properly from the foreign struct")
-	}
-	if c.R.User1 != nil {
-		t.Error("relationship was not removed properly from the foreign struct")
-	}
-	if d.R.User1 != &a {
-		t.Error("relationship to a should have been preserved")
-	}
-	if e.R.User1 != &a {
-		t.Error("relationship to a should have been preserved")
-	}
-
-	if len(a.R.User1Friendships) != 2 {
-		t.Error("should have preserved two relationships")
-	}
-
-	// Removal doesn't do a stable deletion for performance so we have to flip the order
-	if a.R.User1Friendships[1] != &d {
-		t.Error("relationship to d should have been preserved")
-	}
-	if a.R.User1Friendships[0] != &e {
-		t.Error("relationship to e should have been preserved")
-	}
-}
-
-func testUserToManyAddOpUser2Friendships(t *testing.T) {
-	var err error
-
-	ctx := context.Background()
-	tx := MustTx(boil.BeginTx(ctx, nil))
-	defer func() { _ = tx.Rollback() }()
-
-	var a User
-	var b, c, d, e Friendship
-
-	seed := randomize.NewSeed()
-	if err = randomize.Struct(seed, &a, userDBTypes, false, strmangle.SetComplement(userPrimaryKeyColumns, userColumnsWithoutDefault)...); err != nil {
-		t.Fatal(err)
-	}
-	foreigners := []*Friendship{&b, &c, &d, &e}
-	for _, x := range foreigners {
-		if err = randomize.Struct(seed, x, friendshipDBTypes, false, strmangle.SetComplement(friendshipPrimaryKeyColumns, friendshipColumnsWithoutDefault)...); err != nil {
+		if err = randomize.Struct(seed, x, friendDBTypes, false, strmangle.SetComplement(friendPrimaryKeyColumns, friendColumnsWithoutDefault)...); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -1740,13 +1218,13 @@ func testUserToManyAddOpUser2Friendships(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	foreignersSplitByInsertion := [][]*Friendship{
+	foreignersSplitByInsertion := [][]*Friend{
 		{&b, &c},
 		{&d, &e},
 	}
 
 	for i, x := range foreignersSplitByInsertion {
-		err = a.AddUser2Friendships(ctx, tx, i != 0, x...)
+		err = a.AddUser2Friends(ctx, tx, i != 0, x...)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1754,10 +1232,10 @@ func testUserToManyAddOpUser2Friendships(t *testing.T) {
 		first := x[0]
 		second := x[1]
 
-		if !queries.Equal(a.ID, first.User2ID) {
+		if a.ID != first.User2ID {
 			t.Error("foreign key was wrong value", a.ID, first.User2ID)
 		}
-		if !queries.Equal(a.ID, second.User2ID) {
+		if a.ID != second.User2ID {
 			t.Error("foreign key was wrong value", a.ID, second.User2ID)
 		}
 
@@ -1768,14 +1246,14 @@ func testUserToManyAddOpUser2Friendships(t *testing.T) {
 			t.Error("relationship was not added properly to the foreign slice")
 		}
 
-		if a.R.User2Friendships[i*2] != first {
+		if a.R.User2Friends[i*2] != first {
 			t.Error("relationship struct slice not set to correct value")
 		}
-		if a.R.User2Friendships[i*2+1] != second {
+		if a.R.User2Friends[i*2+1] != second {
 			t.Error("relationship struct slice not set to correct value")
 		}
 
-		count, err := a.User2Friendships().Count(ctx, tx)
+		count, err := a.User2Friends().Count(ctx, tx)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -1784,183 +1262,7 @@ func testUserToManyAddOpUser2Friendships(t *testing.T) {
 		}
 	}
 }
-
-func testUserToManySetOpUser2Friendships(t *testing.T) {
-	var err error
-
-	ctx := context.Background()
-	tx := MustTx(boil.BeginTx(ctx, nil))
-	defer func() { _ = tx.Rollback() }()
-
-	var a User
-	var b, c, d, e Friendship
-
-	seed := randomize.NewSeed()
-	if err = randomize.Struct(seed, &a, userDBTypes, false, strmangle.SetComplement(userPrimaryKeyColumns, userColumnsWithoutDefault)...); err != nil {
-		t.Fatal(err)
-	}
-	foreigners := []*Friendship{&b, &c, &d, &e}
-	for _, x := range foreigners {
-		if err = randomize.Struct(seed, x, friendshipDBTypes, false, strmangle.SetComplement(friendshipPrimaryKeyColumns, friendshipColumnsWithoutDefault)...); err != nil {
-			t.Fatal(err)
-		}
-	}
-
-	if err = a.Insert(ctx, tx, boil.Infer()); err != nil {
-		t.Fatal(err)
-	}
-	if err = b.Insert(ctx, tx, boil.Infer()); err != nil {
-		t.Fatal(err)
-	}
-	if err = c.Insert(ctx, tx, boil.Infer()); err != nil {
-		t.Fatal(err)
-	}
-
-	err = a.SetUser2Friendships(ctx, tx, false, &b, &c)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	count, err := a.User2Friendships().Count(ctx, tx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if count != 2 {
-		t.Error("count was wrong:", count)
-	}
-
-	err = a.SetUser2Friendships(ctx, tx, true, &d, &e)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	count, err = a.User2Friendships().Count(ctx, tx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if count != 2 {
-		t.Error("count was wrong:", count)
-	}
-
-	if !queries.IsValuerNil(b.User2ID) {
-		t.Error("want b's foreign key value to be nil")
-	}
-	if !queries.IsValuerNil(c.User2ID) {
-		t.Error("want c's foreign key value to be nil")
-	}
-	if !queries.Equal(a.ID, d.User2ID) {
-		t.Error("foreign key was wrong value", a.ID, d.User2ID)
-	}
-	if !queries.Equal(a.ID, e.User2ID) {
-		t.Error("foreign key was wrong value", a.ID, e.User2ID)
-	}
-
-	if b.R.User2 != nil {
-		t.Error("relationship was not removed properly from the foreign struct")
-	}
-	if c.R.User2 != nil {
-		t.Error("relationship was not removed properly from the foreign struct")
-	}
-	if d.R.User2 != &a {
-		t.Error("relationship was not added properly to the foreign struct")
-	}
-	if e.R.User2 != &a {
-		t.Error("relationship was not added properly to the foreign struct")
-	}
-
-	if a.R.User2Friendships[0] != &d {
-		t.Error("relationship struct slice not set to correct value")
-	}
-	if a.R.User2Friendships[1] != &e {
-		t.Error("relationship struct slice not set to correct value")
-	}
-}
-
-func testUserToManyRemoveOpUser2Friendships(t *testing.T) {
-	var err error
-
-	ctx := context.Background()
-	tx := MustTx(boil.BeginTx(ctx, nil))
-	defer func() { _ = tx.Rollback() }()
-
-	var a User
-	var b, c, d, e Friendship
-
-	seed := randomize.NewSeed()
-	if err = randomize.Struct(seed, &a, userDBTypes, false, strmangle.SetComplement(userPrimaryKeyColumns, userColumnsWithoutDefault)...); err != nil {
-		t.Fatal(err)
-	}
-	foreigners := []*Friendship{&b, &c, &d, &e}
-	for _, x := range foreigners {
-		if err = randomize.Struct(seed, x, friendshipDBTypes, false, strmangle.SetComplement(friendshipPrimaryKeyColumns, friendshipColumnsWithoutDefault)...); err != nil {
-			t.Fatal(err)
-		}
-	}
-
-	if err := a.Insert(ctx, tx, boil.Infer()); err != nil {
-		t.Fatal(err)
-	}
-
-	err = a.AddUser2Friendships(ctx, tx, true, foreigners...)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	count, err := a.User2Friendships().Count(ctx, tx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if count != 4 {
-		t.Error("count was wrong:", count)
-	}
-
-	err = a.RemoveUser2Friendships(ctx, tx, foreigners[:2]...)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	count, err = a.User2Friendships().Count(ctx, tx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if count != 2 {
-		t.Error("count was wrong:", count)
-	}
-
-	if !queries.IsValuerNil(b.User2ID) {
-		t.Error("want b's foreign key value to be nil")
-	}
-	if !queries.IsValuerNil(c.User2ID) {
-		t.Error("want c's foreign key value to be nil")
-	}
-
-	if b.R.User2 != nil {
-		t.Error("relationship was not removed properly from the foreign struct")
-	}
-	if c.R.User2 != nil {
-		t.Error("relationship was not removed properly from the foreign struct")
-	}
-	if d.R.User2 != &a {
-		t.Error("relationship to a should have been preserved")
-	}
-	if e.R.User2 != &a {
-		t.Error("relationship to a should have been preserved")
-	}
-
-	if len(a.R.User2Friendships) != 2 {
-		t.Error("should have preserved two relationships")
-	}
-
-	// Removal doesn't do a stable deletion for performance so we have to flip the order
-	if a.R.User2Friendships[1] != &d {
-		t.Error("relationship to d should have been preserved")
-	}
-	if a.R.User2Friendships[0] != &e {
-		t.Error("relationship to e should have been preserved")
-	}
-}
-
-func testUserToManyAddOpRequestorSubscriptions(t *testing.T) {
+func testUserToManyAddOpSubscriberSubscriptions(t *testing.T) {
 	var err error
 
 	ctx := context.Background()
@@ -1997,7 +1299,7 @@ func testUserToManyAddOpRequestorSubscriptions(t *testing.T) {
 	}
 
 	for i, x := range foreignersSplitByInsertion {
-		err = a.AddRequestorSubscriptions(ctx, tx, i != 0, x...)
+		err = a.AddSubscriberSubscriptions(ctx, tx, i != 0, x...)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -2005,28 +1307,28 @@ func testUserToManyAddOpRequestorSubscriptions(t *testing.T) {
 		first := x[0]
 		second := x[1]
 
-		if !queries.Equal(a.ID, first.RequestorID) {
-			t.Error("foreign key was wrong value", a.ID, first.RequestorID)
+		if a.ID != first.SubscriberID {
+			t.Error("foreign key was wrong value", a.ID, first.SubscriberID)
 		}
-		if !queries.Equal(a.ID, second.RequestorID) {
-			t.Error("foreign key was wrong value", a.ID, second.RequestorID)
+		if a.ID != second.SubscriberID {
+			t.Error("foreign key was wrong value", a.ID, second.SubscriberID)
 		}
 
-		if first.R.Requestor != &a {
+		if first.R.Subscriber != &a {
 			t.Error("relationship was not added properly to the foreign slice")
 		}
-		if second.R.Requestor != &a {
+		if second.R.Subscriber != &a {
 			t.Error("relationship was not added properly to the foreign slice")
 		}
 
-		if a.R.RequestorSubscriptions[i*2] != first {
+		if a.R.SubscriberSubscriptions[i*2] != first {
 			t.Error("relationship struct slice not set to correct value")
 		}
-		if a.R.RequestorSubscriptions[i*2+1] != second {
+		if a.R.SubscriberSubscriptions[i*2+1] != second {
 			t.Error("relationship struct slice not set to correct value")
 		}
 
-		count, err := a.RequestorSubscriptions().Count(ctx, tx)
+		count, err := a.SubscriberSubscriptions().Count(ctx, tx)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -2035,182 +1337,6 @@ func testUserToManyAddOpRequestorSubscriptions(t *testing.T) {
 		}
 	}
 }
-
-func testUserToManySetOpRequestorSubscriptions(t *testing.T) {
-	var err error
-
-	ctx := context.Background()
-	tx := MustTx(boil.BeginTx(ctx, nil))
-	defer func() { _ = tx.Rollback() }()
-
-	var a User
-	var b, c, d, e Subscription
-
-	seed := randomize.NewSeed()
-	if err = randomize.Struct(seed, &a, userDBTypes, false, strmangle.SetComplement(userPrimaryKeyColumns, userColumnsWithoutDefault)...); err != nil {
-		t.Fatal(err)
-	}
-	foreigners := []*Subscription{&b, &c, &d, &e}
-	for _, x := range foreigners {
-		if err = randomize.Struct(seed, x, subscriptionDBTypes, false, strmangle.SetComplement(subscriptionPrimaryKeyColumns, subscriptionColumnsWithoutDefault)...); err != nil {
-			t.Fatal(err)
-		}
-	}
-
-	if err = a.Insert(ctx, tx, boil.Infer()); err != nil {
-		t.Fatal(err)
-	}
-	if err = b.Insert(ctx, tx, boil.Infer()); err != nil {
-		t.Fatal(err)
-	}
-	if err = c.Insert(ctx, tx, boil.Infer()); err != nil {
-		t.Fatal(err)
-	}
-
-	err = a.SetRequestorSubscriptions(ctx, tx, false, &b, &c)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	count, err := a.RequestorSubscriptions().Count(ctx, tx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if count != 2 {
-		t.Error("count was wrong:", count)
-	}
-
-	err = a.SetRequestorSubscriptions(ctx, tx, true, &d, &e)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	count, err = a.RequestorSubscriptions().Count(ctx, tx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if count != 2 {
-		t.Error("count was wrong:", count)
-	}
-
-	if !queries.IsValuerNil(b.RequestorID) {
-		t.Error("want b's foreign key value to be nil")
-	}
-	if !queries.IsValuerNil(c.RequestorID) {
-		t.Error("want c's foreign key value to be nil")
-	}
-	if !queries.Equal(a.ID, d.RequestorID) {
-		t.Error("foreign key was wrong value", a.ID, d.RequestorID)
-	}
-	if !queries.Equal(a.ID, e.RequestorID) {
-		t.Error("foreign key was wrong value", a.ID, e.RequestorID)
-	}
-
-	if b.R.Requestor != nil {
-		t.Error("relationship was not removed properly from the foreign struct")
-	}
-	if c.R.Requestor != nil {
-		t.Error("relationship was not removed properly from the foreign struct")
-	}
-	if d.R.Requestor != &a {
-		t.Error("relationship was not added properly to the foreign struct")
-	}
-	if e.R.Requestor != &a {
-		t.Error("relationship was not added properly to the foreign struct")
-	}
-
-	if a.R.RequestorSubscriptions[0] != &d {
-		t.Error("relationship struct slice not set to correct value")
-	}
-	if a.R.RequestorSubscriptions[1] != &e {
-		t.Error("relationship struct slice not set to correct value")
-	}
-}
-
-func testUserToManyRemoveOpRequestorSubscriptions(t *testing.T) {
-	var err error
-
-	ctx := context.Background()
-	tx := MustTx(boil.BeginTx(ctx, nil))
-	defer func() { _ = tx.Rollback() }()
-
-	var a User
-	var b, c, d, e Subscription
-
-	seed := randomize.NewSeed()
-	if err = randomize.Struct(seed, &a, userDBTypes, false, strmangle.SetComplement(userPrimaryKeyColumns, userColumnsWithoutDefault)...); err != nil {
-		t.Fatal(err)
-	}
-	foreigners := []*Subscription{&b, &c, &d, &e}
-	for _, x := range foreigners {
-		if err = randomize.Struct(seed, x, subscriptionDBTypes, false, strmangle.SetComplement(subscriptionPrimaryKeyColumns, subscriptionColumnsWithoutDefault)...); err != nil {
-			t.Fatal(err)
-		}
-	}
-
-	if err := a.Insert(ctx, tx, boil.Infer()); err != nil {
-		t.Fatal(err)
-	}
-
-	err = a.AddRequestorSubscriptions(ctx, tx, true, foreigners...)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	count, err := a.RequestorSubscriptions().Count(ctx, tx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if count != 4 {
-		t.Error("count was wrong:", count)
-	}
-
-	err = a.RemoveRequestorSubscriptions(ctx, tx, foreigners[:2]...)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	count, err = a.RequestorSubscriptions().Count(ctx, tx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if count != 2 {
-		t.Error("count was wrong:", count)
-	}
-
-	if !queries.IsValuerNil(b.RequestorID) {
-		t.Error("want b's foreign key value to be nil")
-	}
-	if !queries.IsValuerNil(c.RequestorID) {
-		t.Error("want c's foreign key value to be nil")
-	}
-
-	if b.R.Requestor != nil {
-		t.Error("relationship was not removed properly from the foreign struct")
-	}
-	if c.R.Requestor != nil {
-		t.Error("relationship was not removed properly from the foreign struct")
-	}
-	if d.R.Requestor != &a {
-		t.Error("relationship to a should have been preserved")
-	}
-	if e.R.Requestor != &a {
-		t.Error("relationship to a should have been preserved")
-	}
-
-	if len(a.R.RequestorSubscriptions) != 2 {
-		t.Error("should have preserved two relationships")
-	}
-
-	// Removal doesn't do a stable deletion for performance so we have to flip the order
-	if a.R.RequestorSubscriptions[1] != &d {
-		t.Error("relationship to d should have been preserved")
-	}
-	if a.R.RequestorSubscriptions[0] != &e {
-		t.Error("relationship to e should have been preserved")
-	}
-}
-
 func testUserToManyAddOpTargetSubscriptions(t *testing.T) {
 	var err error
 
@@ -2256,10 +1382,10 @@ func testUserToManyAddOpTargetSubscriptions(t *testing.T) {
 		first := x[0]
 		second := x[1]
 
-		if !queries.Equal(a.ID, first.TargetID) {
+		if a.ID != first.TargetID {
 			t.Error("foreign key was wrong value", a.ID, first.TargetID)
 		}
-		if !queries.Equal(a.ID, second.TargetID) {
+		if a.ID != second.TargetID {
 			t.Error("foreign key was wrong value", a.ID, second.TargetID)
 		}
 
@@ -2284,181 +1410,6 @@ func testUserToManyAddOpTargetSubscriptions(t *testing.T) {
 		if want := int64((i + 1) * 2); count != want {
 			t.Error("want", want, "got", count)
 		}
-	}
-}
-
-func testUserToManySetOpTargetSubscriptions(t *testing.T) {
-	var err error
-
-	ctx := context.Background()
-	tx := MustTx(boil.BeginTx(ctx, nil))
-	defer func() { _ = tx.Rollback() }()
-
-	var a User
-	var b, c, d, e Subscription
-
-	seed := randomize.NewSeed()
-	if err = randomize.Struct(seed, &a, userDBTypes, false, strmangle.SetComplement(userPrimaryKeyColumns, userColumnsWithoutDefault)...); err != nil {
-		t.Fatal(err)
-	}
-	foreigners := []*Subscription{&b, &c, &d, &e}
-	for _, x := range foreigners {
-		if err = randomize.Struct(seed, x, subscriptionDBTypes, false, strmangle.SetComplement(subscriptionPrimaryKeyColumns, subscriptionColumnsWithoutDefault)...); err != nil {
-			t.Fatal(err)
-		}
-	}
-
-	if err = a.Insert(ctx, tx, boil.Infer()); err != nil {
-		t.Fatal(err)
-	}
-	if err = b.Insert(ctx, tx, boil.Infer()); err != nil {
-		t.Fatal(err)
-	}
-	if err = c.Insert(ctx, tx, boil.Infer()); err != nil {
-		t.Fatal(err)
-	}
-
-	err = a.SetTargetSubscriptions(ctx, tx, false, &b, &c)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	count, err := a.TargetSubscriptions().Count(ctx, tx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if count != 2 {
-		t.Error("count was wrong:", count)
-	}
-
-	err = a.SetTargetSubscriptions(ctx, tx, true, &d, &e)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	count, err = a.TargetSubscriptions().Count(ctx, tx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if count != 2 {
-		t.Error("count was wrong:", count)
-	}
-
-	if !queries.IsValuerNil(b.TargetID) {
-		t.Error("want b's foreign key value to be nil")
-	}
-	if !queries.IsValuerNil(c.TargetID) {
-		t.Error("want c's foreign key value to be nil")
-	}
-	if !queries.Equal(a.ID, d.TargetID) {
-		t.Error("foreign key was wrong value", a.ID, d.TargetID)
-	}
-	if !queries.Equal(a.ID, e.TargetID) {
-		t.Error("foreign key was wrong value", a.ID, e.TargetID)
-	}
-
-	if b.R.Target != nil {
-		t.Error("relationship was not removed properly from the foreign struct")
-	}
-	if c.R.Target != nil {
-		t.Error("relationship was not removed properly from the foreign struct")
-	}
-	if d.R.Target != &a {
-		t.Error("relationship was not added properly to the foreign struct")
-	}
-	if e.R.Target != &a {
-		t.Error("relationship was not added properly to the foreign struct")
-	}
-
-	if a.R.TargetSubscriptions[0] != &d {
-		t.Error("relationship struct slice not set to correct value")
-	}
-	if a.R.TargetSubscriptions[1] != &e {
-		t.Error("relationship struct slice not set to correct value")
-	}
-}
-
-func testUserToManyRemoveOpTargetSubscriptions(t *testing.T) {
-	var err error
-
-	ctx := context.Background()
-	tx := MustTx(boil.BeginTx(ctx, nil))
-	defer func() { _ = tx.Rollback() }()
-
-	var a User
-	var b, c, d, e Subscription
-
-	seed := randomize.NewSeed()
-	if err = randomize.Struct(seed, &a, userDBTypes, false, strmangle.SetComplement(userPrimaryKeyColumns, userColumnsWithoutDefault)...); err != nil {
-		t.Fatal(err)
-	}
-	foreigners := []*Subscription{&b, &c, &d, &e}
-	for _, x := range foreigners {
-		if err = randomize.Struct(seed, x, subscriptionDBTypes, false, strmangle.SetComplement(subscriptionPrimaryKeyColumns, subscriptionColumnsWithoutDefault)...); err != nil {
-			t.Fatal(err)
-		}
-	}
-
-	if err := a.Insert(ctx, tx, boil.Infer()); err != nil {
-		t.Fatal(err)
-	}
-
-	err = a.AddTargetSubscriptions(ctx, tx, true, foreigners...)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	count, err := a.TargetSubscriptions().Count(ctx, tx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if count != 4 {
-		t.Error("count was wrong:", count)
-	}
-
-	err = a.RemoveTargetSubscriptions(ctx, tx, foreigners[:2]...)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	count, err = a.TargetSubscriptions().Count(ctx, tx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if count != 2 {
-		t.Error("count was wrong:", count)
-	}
-
-	if !queries.IsValuerNil(b.TargetID) {
-		t.Error("want b's foreign key value to be nil")
-	}
-	if !queries.IsValuerNil(c.TargetID) {
-		t.Error("want c's foreign key value to be nil")
-	}
-
-	if b.R.Target != nil {
-		t.Error("relationship was not removed properly from the foreign struct")
-	}
-	if c.R.Target != nil {
-		t.Error("relationship was not removed properly from the foreign struct")
-	}
-	if d.R.Target != &a {
-		t.Error("relationship to a should have been preserved")
-	}
-	if e.R.Target != &a {
-		t.Error("relationship to a should have been preserved")
-	}
-
-	if len(a.R.TargetSubscriptions) != 2 {
-		t.Error("should have preserved two relationships")
-	}
-
-	// Removal doesn't do a stable deletion for performance so we have to flip the order
-	if a.R.TargetSubscriptions[1] != &d {
-		t.Error("relationship to d should have been preserved")
-	}
-	if a.R.TargetSubscriptions[0] != &e {
-		t.Error("relationship to e should have been preserved")
 	}
 }
 

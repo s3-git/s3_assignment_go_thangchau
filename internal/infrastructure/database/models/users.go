@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/friendsofgo/errors"
-	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -24,8 +23,8 @@ import (
 
 // User is an object representing the database table.
 type User struct {
-	ID    int         `boil:"id" json:"id" toml:"id" yaml:"id"`
-	Email null.String `boil:"email" json:"email,omitempty" toml:"email" yaml:"email,omitempty"`
+	ID    int    `boil:"id" json:"id" toml:"id" yaml:"id"`
+	Email string `boil:"email" json:"email" toml:"email" yaml:"email"`
 
 	R *userR `boil:"-" json:"-" toml:"-" yaml:"-"`
 	L userL  `boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -49,52 +48,30 @@ var UserTableColumns = struct {
 
 // Generated where
 
-type whereHelpernull_String struct{ field string }
+type whereHelperstring struct{ field string }
 
-func (w whereHelpernull_String) EQ(x null.String) qm.QueryMod {
-	return qmhelper.WhereNullEQ(w.field, false, x)
-}
-func (w whereHelpernull_String) NEQ(x null.String) qm.QueryMod {
-	return qmhelper.WhereNullEQ(w.field, true, x)
-}
-func (w whereHelpernull_String) LT(x null.String) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.LT, x)
-}
-func (w whereHelpernull_String) LTE(x null.String) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.LTE, x)
-}
-func (w whereHelpernull_String) GT(x null.String) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.GT, x)
-}
-func (w whereHelpernull_String) GTE(x null.String) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.GTE, x)
-}
-func (w whereHelpernull_String) LIKE(x null.String) qm.QueryMod {
-	return qm.Where(w.field+" LIKE ?", x)
-}
-func (w whereHelpernull_String) NLIKE(x null.String) qm.QueryMod {
-	return qm.Where(w.field+" NOT LIKE ?", x)
-}
-func (w whereHelpernull_String) ILIKE(x null.String) qm.QueryMod {
-	return qm.Where(w.field+" ILIKE ?", x)
-}
-func (w whereHelpernull_String) NILIKE(x null.String) qm.QueryMod {
-	return qm.Where(w.field+" NOT ILIKE ?", x)
-}
-func (w whereHelpernull_String) SIMILAR(x null.String) qm.QueryMod {
-	return qm.Where(w.field+" SIMILAR TO ?", x)
-}
-func (w whereHelpernull_String) NSIMILAR(x null.String) qm.QueryMod {
+func (w whereHelperstring) EQ(x string) qm.QueryMod      { return qmhelper.Where(w.field, qmhelper.EQ, x) }
+func (w whereHelperstring) NEQ(x string) qm.QueryMod     { return qmhelper.Where(w.field, qmhelper.NEQ, x) }
+func (w whereHelperstring) LT(x string) qm.QueryMod      { return qmhelper.Where(w.field, qmhelper.LT, x) }
+func (w whereHelperstring) LTE(x string) qm.QueryMod     { return qmhelper.Where(w.field, qmhelper.LTE, x) }
+func (w whereHelperstring) GT(x string) qm.QueryMod      { return qmhelper.Where(w.field, qmhelper.GT, x) }
+func (w whereHelperstring) GTE(x string) qm.QueryMod     { return qmhelper.Where(w.field, qmhelper.GTE, x) }
+func (w whereHelperstring) LIKE(x string) qm.QueryMod    { return qm.Where(w.field+" LIKE ?", x) }
+func (w whereHelperstring) NLIKE(x string) qm.QueryMod   { return qm.Where(w.field+" NOT LIKE ?", x) }
+func (w whereHelperstring) ILIKE(x string) qm.QueryMod   { return qm.Where(w.field+" ILIKE ?", x) }
+func (w whereHelperstring) NILIKE(x string) qm.QueryMod  { return qm.Where(w.field+" NOT ILIKE ?", x) }
+func (w whereHelperstring) SIMILAR(x string) qm.QueryMod { return qm.Where(w.field+" SIMILAR TO ?", x) }
+func (w whereHelperstring) NSIMILAR(x string) qm.QueryMod {
 	return qm.Where(w.field+" NOT SIMILAR TO ?", x)
 }
-func (w whereHelpernull_String) IN(slice []string) qm.QueryMod {
+func (w whereHelperstring) IN(slice []string) qm.QueryMod {
 	values := make([]interface{}, 0, len(slice))
 	for _, value := range slice {
 		values = append(values, value)
 	}
 	return qm.WhereIn(fmt.Sprintf("%s IN ?", w.field), values...)
 }
-func (w whereHelpernull_String) NIN(slice []string) qm.QueryMod {
+func (w whereHelperstring) NIN(slice []string) qm.QueryMod {
 	values := make([]interface{}, 0, len(slice))
 	for _, value := range slice {
 		values = append(values, value)
@@ -102,42 +79,39 @@ func (w whereHelpernull_String) NIN(slice []string) qm.QueryMod {
 	return qm.WhereNotIn(fmt.Sprintf("%s NOT IN ?", w.field), values...)
 }
 
-func (w whereHelpernull_String) IsNull() qm.QueryMod    { return qmhelper.WhereIsNull(w.field) }
-func (w whereHelpernull_String) IsNotNull() qm.QueryMod { return qmhelper.WhereIsNotNull(w.field) }
-
 var UserWhere = struct {
 	ID    whereHelperint
-	Email whereHelpernull_String
+	Email whereHelperstring
 }{
 	ID:    whereHelperint{field: "\"users\".\"id\""},
-	Email: whereHelpernull_String{field: "\"users\".\"email\""},
+	Email: whereHelperstring{field: "\"users\".\"email\""},
 }
 
 // UserRels is where relationship names are stored.
 var UserRels = struct {
-	RequestorBlocks        string
-	TargetBlocks           string
-	User1Friendships       string
-	User2Friendships       string
-	RequestorSubscriptions string
-	TargetSubscriptions    string
+	BlockedBlocks           string
+	BlockerBlocks           string
+	User1Friends            string
+	User2Friends            string
+	SubscriberSubscriptions string
+	TargetSubscriptions     string
 }{
-	RequestorBlocks:        "RequestorBlocks",
-	TargetBlocks:           "TargetBlocks",
-	User1Friendships:       "User1Friendships",
-	User2Friendships:       "User2Friendships",
-	RequestorSubscriptions: "RequestorSubscriptions",
-	TargetSubscriptions:    "TargetSubscriptions",
+	BlockedBlocks:           "BlockedBlocks",
+	BlockerBlocks:           "BlockerBlocks",
+	User1Friends:            "User1Friends",
+	User2Friends:            "User2Friends",
+	SubscriberSubscriptions: "SubscriberSubscriptions",
+	TargetSubscriptions:     "TargetSubscriptions",
 }
 
 // userR is where relationships are stored.
 type userR struct {
-	RequestorBlocks        BlockSlice        `boil:"RequestorBlocks" json:"RequestorBlocks" toml:"RequestorBlocks" yaml:"RequestorBlocks"`
-	TargetBlocks           BlockSlice        `boil:"TargetBlocks" json:"TargetBlocks" toml:"TargetBlocks" yaml:"TargetBlocks"`
-	User1Friendships       FriendshipSlice   `boil:"User1Friendships" json:"User1Friendships" toml:"User1Friendships" yaml:"User1Friendships"`
-	User2Friendships       FriendshipSlice   `boil:"User2Friendships" json:"User2Friendships" toml:"User2Friendships" yaml:"User2Friendships"`
-	RequestorSubscriptions SubscriptionSlice `boil:"RequestorSubscriptions" json:"RequestorSubscriptions" toml:"RequestorSubscriptions" yaml:"RequestorSubscriptions"`
-	TargetSubscriptions    SubscriptionSlice `boil:"TargetSubscriptions" json:"TargetSubscriptions" toml:"TargetSubscriptions" yaml:"TargetSubscriptions"`
+	BlockedBlocks           BlockSlice        `boil:"BlockedBlocks" json:"BlockedBlocks" toml:"BlockedBlocks" yaml:"BlockedBlocks"`
+	BlockerBlocks           BlockSlice        `boil:"BlockerBlocks" json:"BlockerBlocks" toml:"BlockerBlocks" yaml:"BlockerBlocks"`
+	User1Friends            FriendSlice       `boil:"User1Friends" json:"User1Friends" toml:"User1Friends" yaml:"User1Friends"`
+	User2Friends            FriendSlice       `boil:"User2Friends" json:"User2Friends" toml:"User2Friends" yaml:"User2Friends"`
+	SubscriberSubscriptions SubscriptionSlice `boil:"SubscriberSubscriptions" json:"SubscriberSubscriptions" toml:"SubscriberSubscriptions" yaml:"SubscriberSubscriptions"`
+	TargetSubscriptions     SubscriptionSlice `boil:"TargetSubscriptions" json:"TargetSubscriptions" toml:"TargetSubscriptions" yaml:"TargetSubscriptions"`
 }
 
 // NewStruct creates a new relationship struct
@@ -145,84 +119,84 @@ func (*userR) NewStruct() *userR {
 	return &userR{}
 }
 
-func (o *User) GetRequestorBlocks() BlockSlice {
+func (o *User) GetBlockedBlocks() BlockSlice {
 	if o == nil {
 		return nil
 	}
 
-	return o.R.GetRequestorBlocks()
+	return o.R.GetBlockedBlocks()
 }
 
-func (r *userR) GetRequestorBlocks() BlockSlice {
+func (r *userR) GetBlockedBlocks() BlockSlice {
 	if r == nil {
 		return nil
 	}
 
-	return r.RequestorBlocks
+	return r.BlockedBlocks
 }
 
-func (o *User) GetTargetBlocks() BlockSlice {
+func (o *User) GetBlockerBlocks() BlockSlice {
 	if o == nil {
 		return nil
 	}
 
-	return o.R.GetTargetBlocks()
+	return o.R.GetBlockerBlocks()
 }
 
-func (r *userR) GetTargetBlocks() BlockSlice {
+func (r *userR) GetBlockerBlocks() BlockSlice {
 	if r == nil {
 		return nil
 	}
 
-	return r.TargetBlocks
+	return r.BlockerBlocks
 }
 
-func (o *User) GetUser1Friendships() FriendshipSlice {
+func (o *User) GetUser1Friends() FriendSlice {
 	if o == nil {
 		return nil
 	}
 
-	return o.R.GetUser1Friendships()
+	return o.R.GetUser1Friends()
 }
 
-func (r *userR) GetUser1Friendships() FriendshipSlice {
+func (r *userR) GetUser1Friends() FriendSlice {
 	if r == nil {
 		return nil
 	}
 
-	return r.User1Friendships
+	return r.User1Friends
 }
 
-func (o *User) GetUser2Friendships() FriendshipSlice {
+func (o *User) GetUser2Friends() FriendSlice {
 	if o == nil {
 		return nil
 	}
 
-	return o.R.GetUser2Friendships()
+	return o.R.GetUser2Friends()
 }
 
-func (r *userR) GetUser2Friendships() FriendshipSlice {
+func (r *userR) GetUser2Friends() FriendSlice {
 	if r == nil {
 		return nil
 	}
 
-	return r.User2Friendships
+	return r.User2Friends
 }
 
-func (o *User) GetRequestorSubscriptions() SubscriptionSlice {
+func (o *User) GetSubscriberSubscriptions() SubscriptionSlice {
 	if o == nil {
 		return nil
 	}
 
-	return o.R.GetRequestorSubscriptions()
+	return o.R.GetSubscriberSubscriptions()
 }
 
-func (r *userR) GetRequestorSubscriptions() SubscriptionSlice {
+func (r *userR) GetSubscriberSubscriptions() SubscriptionSlice {
 	if r == nil {
 		return nil
 	}
 
-	return r.RequestorSubscriptions
+	return r.SubscriberSubscriptions
 }
 
 func (o *User) GetTargetSubscriptions() SubscriptionSlice {
@@ -246,8 +220,8 @@ type userL struct{}
 
 var (
 	userAllColumns            = []string{"id", "email"}
-	userColumnsWithoutDefault = []string{"id"}
-	userColumnsWithDefault    = []string{"email"}
+	userColumnsWithoutDefault = []string{"email"}
+	userColumnsWithDefault    = []string{"id"}
 	userPrimaryKeyColumns     = []string{"id"}
 	userGeneratedColumns      = []string{}
 )
@@ -557,71 +531,71 @@ func (q userQuery) Exists(ctx context.Context, exec boil.ContextExecutor) (bool,
 	return count > 0, nil
 }
 
-// RequestorBlocks retrieves all the block's Blocks with an executor via requestor_id column.
-func (o *User) RequestorBlocks(mods ...qm.QueryMod) blockQuery {
+// BlockedBlocks retrieves all the block's Blocks with an executor via blocked_id column.
+func (o *User) BlockedBlocks(mods ...qm.QueryMod) blockQuery {
 	var queryMods []qm.QueryMod
 	if len(mods) != 0 {
 		queryMods = append(queryMods, mods...)
 	}
 
 	queryMods = append(queryMods,
-		qm.Where("\"blocks\".\"requestor_id\"=?", o.ID),
+		qm.Where("\"blocks\".\"blocked_id\"=?", o.ID),
 	)
 
 	return Blocks(queryMods...)
 }
 
-// TargetBlocks retrieves all the block's Blocks with an executor via target_id column.
-func (o *User) TargetBlocks(mods ...qm.QueryMod) blockQuery {
+// BlockerBlocks retrieves all the block's Blocks with an executor via blocker_id column.
+func (o *User) BlockerBlocks(mods ...qm.QueryMod) blockQuery {
 	var queryMods []qm.QueryMod
 	if len(mods) != 0 {
 		queryMods = append(queryMods, mods...)
 	}
 
 	queryMods = append(queryMods,
-		qm.Where("\"blocks\".\"target_id\"=?", o.ID),
+		qm.Where("\"blocks\".\"blocker_id\"=?", o.ID),
 	)
 
 	return Blocks(queryMods...)
 }
 
-// User1Friendships retrieves all the friendship's Friendships with an executor via user1_id column.
-func (o *User) User1Friendships(mods ...qm.QueryMod) friendshipQuery {
+// User1Friends retrieves all the friend's Friends with an executor via user1_id column.
+func (o *User) User1Friends(mods ...qm.QueryMod) friendQuery {
 	var queryMods []qm.QueryMod
 	if len(mods) != 0 {
 		queryMods = append(queryMods, mods...)
 	}
 
 	queryMods = append(queryMods,
-		qm.Where("\"friendships\".\"user1_id\"=?", o.ID),
+		qm.Where("\"friends\".\"user1_id\"=?", o.ID),
 	)
 
-	return Friendships(queryMods...)
+	return Friends(queryMods...)
 }
 
-// User2Friendships retrieves all the friendship's Friendships with an executor via user2_id column.
-func (o *User) User2Friendships(mods ...qm.QueryMod) friendshipQuery {
+// User2Friends retrieves all the friend's Friends with an executor via user2_id column.
+func (o *User) User2Friends(mods ...qm.QueryMod) friendQuery {
 	var queryMods []qm.QueryMod
 	if len(mods) != 0 {
 		queryMods = append(queryMods, mods...)
 	}
 
 	queryMods = append(queryMods,
-		qm.Where("\"friendships\".\"user2_id\"=?", o.ID),
+		qm.Where("\"friends\".\"user2_id\"=?", o.ID),
 	)
 
-	return Friendships(queryMods...)
+	return Friends(queryMods...)
 }
 
-// RequestorSubscriptions retrieves all the subscription's Subscriptions with an executor via requestor_id column.
-func (o *User) RequestorSubscriptions(mods ...qm.QueryMod) subscriptionQuery {
+// SubscriberSubscriptions retrieves all the subscription's Subscriptions with an executor via subscriber_id column.
+func (o *User) SubscriberSubscriptions(mods ...qm.QueryMod) subscriptionQuery {
 	var queryMods []qm.QueryMod
 	if len(mods) != 0 {
 		queryMods = append(queryMods, mods...)
 	}
 
 	queryMods = append(queryMods,
-		qm.Where("\"subscriptions\".\"requestor_id\"=?", o.ID),
+		qm.Where("\"subscriptions\".\"subscriber_id\"=?", o.ID),
 	)
 
 	return Subscriptions(queryMods...)
@@ -641,9 +615,9 @@ func (o *User) TargetSubscriptions(mods ...qm.QueryMod) subscriptionQuery {
 	return Subscriptions(queryMods...)
 }
 
-// LoadRequestorBlocks allows an eager lookup of values, cached into the
+// LoadBlockedBlocks allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (userL) LoadRequestorBlocks(ctx context.Context, e boil.ContextExecutor, singular bool, maybeUser interface{}, mods queries.Applicator) error {
+func (userL) LoadBlockedBlocks(ctx context.Context, e boil.ContextExecutor, singular bool, maybeUser interface{}, mods queries.Applicator) error {
 	var slice []*User
 	var object *User
 
@@ -697,7 +671,7 @@ func (userL) LoadRequestorBlocks(ctx context.Context, e boil.ContextExecutor, si
 
 	query := NewQuery(
 		qm.From(`blocks`),
-		qm.WhereIn(`blocks.requestor_id in ?`, argsSlice...),
+		qm.WhereIn(`blocks.blocked_id in ?`, argsSlice...),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -728,24 +702,24 @@ func (userL) LoadRequestorBlocks(ctx context.Context, e boil.ContextExecutor, si
 		}
 	}
 	if singular {
-		object.R.RequestorBlocks = resultSlice
+		object.R.BlockedBlocks = resultSlice
 		for _, foreign := range resultSlice {
 			if foreign.R == nil {
 				foreign.R = &blockR{}
 			}
-			foreign.R.Requestor = object
+			foreign.R.Blocked = object
 		}
 		return nil
 	}
 
 	for _, foreign := range resultSlice {
 		for _, local := range slice {
-			if queries.Equal(local.ID, foreign.RequestorID) {
-				local.R.RequestorBlocks = append(local.R.RequestorBlocks, foreign)
+			if local.ID == foreign.BlockedID {
+				local.R.BlockedBlocks = append(local.R.BlockedBlocks, foreign)
 				if foreign.R == nil {
 					foreign.R = &blockR{}
 				}
-				foreign.R.Requestor = local
+				foreign.R.Blocked = local
 				break
 			}
 		}
@@ -754,9 +728,9 @@ func (userL) LoadRequestorBlocks(ctx context.Context, e boil.ContextExecutor, si
 	return nil
 }
 
-// LoadTargetBlocks allows an eager lookup of values, cached into the
+// LoadBlockerBlocks allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (userL) LoadTargetBlocks(ctx context.Context, e boil.ContextExecutor, singular bool, maybeUser interface{}, mods queries.Applicator) error {
+func (userL) LoadBlockerBlocks(ctx context.Context, e boil.ContextExecutor, singular bool, maybeUser interface{}, mods queries.Applicator) error {
 	var slice []*User
 	var object *User
 
@@ -810,7 +784,7 @@ func (userL) LoadTargetBlocks(ctx context.Context, e boil.ContextExecutor, singu
 
 	query := NewQuery(
 		qm.From(`blocks`),
-		qm.WhereIn(`blocks.target_id in ?`, argsSlice...),
+		qm.WhereIn(`blocks.blocker_id in ?`, argsSlice...),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -841,24 +815,24 @@ func (userL) LoadTargetBlocks(ctx context.Context, e boil.ContextExecutor, singu
 		}
 	}
 	if singular {
-		object.R.TargetBlocks = resultSlice
+		object.R.BlockerBlocks = resultSlice
 		for _, foreign := range resultSlice {
 			if foreign.R == nil {
 				foreign.R = &blockR{}
 			}
-			foreign.R.Target = object
+			foreign.R.Blocker = object
 		}
 		return nil
 	}
 
 	for _, foreign := range resultSlice {
 		for _, local := range slice {
-			if queries.Equal(local.ID, foreign.TargetID) {
-				local.R.TargetBlocks = append(local.R.TargetBlocks, foreign)
+			if local.ID == foreign.BlockerID {
+				local.R.BlockerBlocks = append(local.R.BlockerBlocks, foreign)
 				if foreign.R == nil {
 					foreign.R = &blockR{}
 				}
-				foreign.R.Target = local
+				foreign.R.Blocker = local
 				break
 			}
 		}
@@ -867,9 +841,9 @@ func (userL) LoadTargetBlocks(ctx context.Context, e boil.ContextExecutor, singu
 	return nil
 }
 
-// LoadUser1Friendships allows an eager lookup of values, cached into the
+// LoadUser1Friends allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (userL) LoadUser1Friendships(ctx context.Context, e boil.ContextExecutor, singular bool, maybeUser interface{}, mods queries.Applicator) error {
+func (userL) LoadUser1Friends(ctx context.Context, e boil.ContextExecutor, singular bool, maybeUser interface{}, mods queries.Applicator) error {
 	var slice []*User
 	var object *User
 
@@ -922,8 +896,8 @@ func (userL) LoadUser1Friendships(ctx context.Context, e boil.ContextExecutor, s
 	}
 
 	query := NewQuery(
-		qm.From(`friendships`),
-		qm.WhereIn(`friendships.user1_id in ?`, argsSlice...),
+		qm.From(`friends`),
+		qm.WhereIn(`friends.user1_id in ?`, argsSlice...),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -931,22 +905,22 @@ func (userL) LoadUser1Friendships(ctx context.Context, e boil.ContextExecutor, s
 
 	results, err := query.QueryContext(ctx, e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load friendships")
+		return errors.Wrap(err, "failed to eager load friends")
 	}
 
-	var resultSlice []*Friendship
+	var resultSlice []*Friend
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice friendships")
+		return errors.Wrap(err, "failed to bind eager loaded slice friends")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on friendships")
+		return errors.Wrap(err, "failed to close results in eager load on friends")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for friendships")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for friends")
 	}
 
-	if len(friendshipAfterSelectHooks) != 0 {
+	if len(friendAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(ctx, e); err != nil {
 				return err
@@ -954,10 +928,10 @@ func (userL) LoadUser1Friendships(ctx context.Context, e boil.ContextExecutor, s
 		}
 	}
 	if singular {
-		object.R.User1Friendships = resultSlice
+		object.R.User1Friends = resultSlice
 		for _, foreign := range resultSlice {
 			if foreign.R == nil {
-				foreign.R = &friendshipR{}
+				foreign.R = &friendR{}
 			}
 			foreign.R.User1 = object
 		}
@@ -966,10 +940,10 @@ func (userL) LoadUser1Friendships(ctx context.Context, e boil.ContextExecutor, s
 
 	for _, foreign := range resultSlice {
 		for _, local := range slice {
-			if queries.Equal(local.ID, foreign.User1ID) {
-				local.R.User1Friendships = append(local.R.User1Friendships, foreign)
+			if local.ID == foreign.User1ID {
+				local.R.User1Friends = append(local.R.User1Friends, foreign)
 				if foreign.R == nil {
-					foreign.R = &friendshipR{}
+					foreign.R = &friendR{}
 				}
 				foreign.R.User1 = local
 				break
@@ -980,9 +954,9 @@ func (userL) LoadUser1Friendships(ctx context.Context, e boil.ContextExecutor, s
 	return nil
 }
 
-// LoadUser2Friendships allows an eager lookup of values, cached into the
+// LoadUser2Friends allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (userL) LoadUser2Friendships(ctx context.Context, e boil.ContextExecutor, singular bool, maybeUser interface{}, mods queries.Applicator) error {
+func (userL) LoadUser2Friends(ctx context.Context, e boil.ContextExecutor, singular bool, maybeUser interface{}, mods queries.Applicator) error {
 	var slice []*User
 	var object *User
 
@@ -1035,8 +1009,8 @@ func (userL) LoadUser2Friendships(ctx context.Context, e boil.ContextExecutor, s
 	}
 
 	query := NewQuery(
-		qm.From(`friendships`),
-		qm.WhereIn(`friendships.user2_id in ?`, argsSlice...),
+		qm.From(`friends`),
+		qm.WhereIn(`friends.user2_id in ?`, argsSlice...),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -1044,22 +1018,22 @@ func (userL) LoadUser2Friendships(ctx context.Context, e boil.ContextExecutor, s
 
 	results, err := query.QueryContext(ctx, e)
 	if err != nil {
-		return errors.Wrap(err, "failed to eager load friendships")
+		return errors.Wrap(err, "failed to eager load friends")
 	}
 
-	var resultSlice []*Friendship
+	var resultSlice []*Friend
 	if err = queries.Bind(results, &resultSlice); err != nil {
-		return errors.Wrap(err, "failed to bind eager loaded slice friendships")
+		return errors.Wrap(err, "failed to bind eager loaded slice friends")
 	}
 
 	if err = results.Close(); err != nil {
-		return errors.Wrap(err, "failed to close results in eager load on friendships")
+		return errors.Wrap(err, "failed to close results in eager load on friends")
 	}
 	if err = results.Err(); err != nil {
-		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for friendships")
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for friends")
 	}
 
-	if len(friendshipAfterSelectHooks) != 0 {
+	if len(friendAfterSelectHooks) != 0 {
 		for _, obj := range resultSlice {
 			if err := obj.doAfterSelectHooks(ctx, e); err != nil {
 				return err
@@ -1067,10 +1041,10 @@ func (userL) LoadUser2Friendships(ctx context.Context, e boil.ContextExecutor, s
 		}
 	}
 	if singular {
-		object.R.User2Friendships = resultSlice
+		object.R.User2Friends = resultSlice
 		for _, foreign := range resultSlice {
 			if foreign.R == nil {
-				foreign.R = &friendshipR{}
+				foreign.R = &friendR{}
 			}
 			foreign.R.User2 = object
 		}
@@ -1079,10 +1053,10 @@ func (userL) LoadUser2Friendships(ctx context.Context, e boil.ContextExecutor, s
 
 	for _, foreign := range resultSlice {
 		for _, local := range slice {
-			if queries.Equal(local.ID, foreign.User2ID) {
-				local.R.User2Friendships = append(local.R.User2Friendships, foreign)
+			if local.ID == foreign.User2ID {
+				local.R.User2Friends = append(local.R.User2Friends, foreign)
 				if foreign.R == nil {
-					foreign.R = &friendshipR{}
+					foreign.R = &friendR{}
 				}
 				foreign.R.User2 = local
 				break
@@ -1093,9 +1067,9 @@ func (userL) LoadUser2Friendships(ctx context.Context, e boil.ContextExecutor, s
 	return nil
 }
 
-// LoadRequestorSubscriptions allows an eager lookup of values, cached into the
+// LoadSubscriberSubscriptions allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for a 1-M or N-M relationship.
-func (userL) LoadRequestorSubscriptions(ctx context.Context, e boil.ContextExecutor, singular bool, maybeUser interface{}, mods queries.Applicator) error {
+func (userL) LoadSubscriberSubscriptions(ctx context.Context, e boil.ContextExecutor, singular bool, maybeUser interface{}, mods queries.Applicator) error {
 	var slice []*User
 	var object *User
 
@@ -1149,7 +1123,7 @@ func (userL) LoadRequestorSubscriptions(ctx context.Context, e boil.ContextExecu
 
 	query := NewQuery(
 		qm.From(`subscriptions`),
-		qm.WhereIn(`subscriptions.requestor_id in ?`, argsSlice...),
+		qm.WhereIn(`subscriptions.subscriber_id in ?`, argsSlice...),
 	)
 	if mods != nil {
 		mods.Apply(query)
@@ -1180,24 +1154,24 @@ func (userL) LoadRequestorSubscriptions(ctx context.Context, e boil.ContextExecu
 		}
 	}
 	if singular {
-		object.R.RequestorSubscriptions = resultSlice
+		object.R.SubscriberSubscriptions = resultSlice
 		for _, foreign := range resultSlice {
 			if foreign.R == nil {
 				foreign.R = &subscriptionR{}
 			}
-			foreign.R.Requestor = object
+			foreign.R.Subscriber = object
 		}
 		return nil
 	}
 
 	for _, foreign := range resultSlice {
 		for _, local := range slice {
-			if queries.Equal(local.ID, foreign.RequestorID) {
-				local.R.RequestorSubscriptions = append(local.R.RequestorSubscriptions, foreign)
+			if local.ID == foreign.SubscriberID {
+				local.R.SubscriberSubscriptions = append(local.R.SubscriberSubscriptions, foreign)
 				if foreign.R == nil {
 					foreign.R = &subscriptionR{}
 				}
-				foreign.R.Requestor = local
+				foreign.R.Subscriber = local
 				break
 			}
 		}
@@ -1305,7 +1279,7 @@ func (userL) LoadTargetSubscriptions(ctx context.Context, e boil.ContextExecutor
 
 	for _, foreign := range resultSlice {
 		for _, local := range slice {
-			if queries.Equal(local.ID, foreign.TargetID) {
+			if local.ID == foreign.TargetID {
 				local.R.TargetSubscriptions = append(local.R.TargetSubscriptions, foreign)
 				if foreign.R == nil {
 					foreign.R = &subscriptionR{}
@@ -1319,22 +1293,22 @@ func (userL) LoadTargetSubscriptions(ctx context.Context, e boil.ContextExecutor
 	return nil
 }
 
-// AddRequestorBlocks adds the given related objects to the existing relationships
+// AddBlockedBlocks adds the given related objects to the existing relationships
 // of the user, optionally inserting them as new records.
-// Appends related to o.R.RequestorBlocks.
-// Sets related.R.Requestor appropriately.
-func (o *User) AddRequestorBlocks(ctx context.Context, exec boil.ContextExecutor, insert bool, related ...*Block) error {
+// Appends related to o.R.BlockedBlocks.
+// Sets related.R.Blocked appropriately.
+func (o *User) AddBlockedBlocks(ctx context.Context, exec boil.ContextExecutor, insert bool, related ...*Block) error {
 	var err error
 	for _, rel := range related {
 		if insert {
-			queries.Assign(&rel.RequestorID, o.ID)
+			rel.BlockedID = o.ID
 			if err = rel.Insert(ctx, exec, boil.Infer()); err != nil {
 				return errors.Wrap(err, "failed to insert into foreign table")
 			}
 		} else {
 			updateQuery := fmt.Sprintf(
 				"UPDATE \"blocks\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"requestor_id"}),
+				strmangle.SetParamNames("\"", "\"", 1, []string{"blocked_id"}),
 				strmangle.WhereClause("\"", "\"", 2, blockPrimaryKeyColumns),
 			)
 			values := []interface{}{o.ID, rel.ID}
@@ -1348,120 +1322,46 @@ func (o *User) AddRequestorBlocks(ctx context.Context, exec boil.ContextExecutor
 				return errors.Wrap(err, "failed to update foreign table")
 			}
 
-			queries.Assign(&rel.RequestorID, o.ID)
+			rel.BlockedID = o.ID
 		}
 	}
 
 	if o.R == nil {
 		o.R = &userR{
-			RequestorBlocks: related,
+			BlockedBlocks: related,
 		}
 	} else {
-		o.R.RequestorBlocks = append(o.R.RequestorBlocks, related...)
+		o.R.BlockedBlocks = append(o.R.BlockedBlocks, related...)
 	}
 
 	for _, rel := range related {
 		if rel.R == nil {
 			rel.R = &blockR{
-				Requestor: o,
+				Blocked: o,
 			}
 		} else {
-			rel.R.Requestor = o
+			rel.R.Blocked = o
 		}
 	}
 	return nil
 }
 
-// SetRequestorBlocks removes all previously related items of the
-// user replacing them completely with the passed
-// in related items, optionally inserting them as new records.
-// Sets o.R.Requestor's RequestorBlocks accordingly.
-// Replaces o.R.RequestorBlocks with related.
-// Sets related.R.Requestor's RequestorBlocks accordingly.
-func (o *User) SetRequestorBlocks(ctx context.Context, exec boil.ContextExecutor, insert bool, related ...*Block) error {
-	query := "update \"blocks\" set \"requestor_id\" = null where \"requestor_id\" = $1"
-	values := []interface{}{o.ID}
-	if boil.IsDebug(ctx) {
-		writer := boil.DebugWriterFrom(ctx)
-		fmt.Fprintln(writer, query)
-		fmt.Fprintln(writer, values)
-	}
-	_, err := exec.ExecContext(ctx, query, values...)
-	if err != nil {
-		return errors.Wrap(err, "failed to remove relationships before set")
-	}
-
-	if o.R != nil {
-		for _, rel := range o.R.RequestorBlocks {
-			queries.SetScanner(&rel.RequestorID, nil)
-			if rel.R == nil {
-				continue
-			}
-
-			rel.R.Requestor = nil
-		}
-		o.R.RequestorBlocks = nil
-	}
-
-	return o.AddRequestorBlocks(ctx, exec, insert, related...)
-}
-
-// RemoveRequestorBlocks relationships from objects passed in.
-// Removes related items from R.RequestorBlocks (uses pointer comparison, removal does not keep order)
-// Sets related.R.Requestor.
-func (o *User) RemoveRequestorBlocks(ctx context.Context, exec boil.ContextExecutor, related ...*Block) error {
-	if len(related) == 0 {
-		return nil
-	}
-
-	var err error
-	for _, rel := range related {
-		queries.SetScanner(&rel.RequestorID, nil)
-		if rel.R != nil {
-			rel.R.Requestor = nil
-		}
-		if _, err = rel.Update(ctx, exec, boil.Whitelist("requestor_id")); err != nil {
-			return err
-		}
-	}
-	if o.R == nil {
-		return nil
-	}
-
-	for _, rel := range related {
-		for i, ri := range o.R.RequestorBlocks {
-			if rel != ri {
-				continue
-			}
-
-			ln := len(o.R.RequestorBlocks)
-			if ln > 1 && i < ln-1 {
-				o.R.RequestorBlocks[i] = o.R.RequestorBlocks[ln-1]
-			}
-			o.R.RequestorBlocks = o.R.RequestorBlocks[:ln-1]
-			break
-		}
-	}
-
-	return nil
-}
-
-// AddTargetBlocks adds the given related objects to the existing relationships
+// AddBlockerBlocks adds the given related objects to the existing relationships
 // of the user, optionally inserting them as new records.
-// Appends related to o.R.TargetBlocks.
-// Sets related.R.Target appropriately.
-func (o *User) AddTargetBlocks(ctx context.Context, exec boil.ContextExecutor, insert bool, related ...*Block) error {
+// Appends related to o.R.BlockerBlocks.
+// Sets related.R.Blocker appropriately.
+func (o *User) AddBlockerBlocks(ctx context.Context, exec boil.ContextExecutor, insert bool, related ...*Block) error {
 	var err error
 	for _, rel := range related {
 		if insert {
-			queries.Assign(&rel.TargetID, o.ID)
+			rel.BlockerID = o.ID
 			if err = rel.Insert(ctx, exec, boil.Infer()); err != nil {
 				return errors.Wrap(err, "failed to insert into foreign table")
 			}
 		} else {
 			updateQuery := fmt.Sprintf(
 				"UPDATE \"blocks\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"target_id"}),
+				strmangle.SetParamNames("\"", "\"", 1, []string{"blocker_id"}),
 				strmangle.WhereClause("\"", "\"", 2, blockPrimaryKeyColumns),
 			)
 			values := []interface{}{o.ID, rel.ID}
@@ -1475,121 +1375,47 @@ func (o *User) AddTargetBlocks(ctx context.Context, exec boil.ContextExecutor, i
 				return errors.Wrap(err, "failed to update foreign table")
 			}
 
-			queries.Assign(&rel.TargetID, o.ID)
+			rel.BlockerID = o.ID
 		}
 	}
 
 	if o.R == nil {
 		o.R = &userR{
-			TargetBlocks: related,
+			BlockerBlocks: related,
 		}
 	} else {
-		o.R.TargetBlocks = append(o.R.TargetBlocks, related...)
+		o.R.BlockerBlocks = append(o.R.BlockerBlocks, related...)
 	}
 
 	for _, rel := range related {
 		if rel.R == nil {
 			rel.R = &blockR{
-				Target: o,
+				Blocker: o,
 			}
 		} else {
-			rel.R.Target = o
+			rel.R.Blocker = o
 		}
 	}
 	return nil
 }
 
-// SetTargetBlocks removes all previously related items of the
-// user replacing them completely with the passed
-// in related items, optionally inserting them as new records.
-// Sets o.R.Target's TargetBlocks accordingly.
-// Replaces o.R.TargetBlocks with related.
-// Sets related.R.Target's TargetBlocks accordingly.
-func (o *User) SetTargetBlocks(ctx context.Context, exec boil.ContextExecutor, insert bool, related ...*Block) error {
-	query := "update \"blocks\" set \"target_id\" = null where \"target_id\" = $1"
-	values := []interface{}{o.ID}
-	if boil.IsDebug(ctx) {
-		writer := boil.DebugWriterFrom(ctx)
-		fmt.Fprintln(writer, query)
-		fmt.Fprintln(writer, values)
-	}
-	_, err := exec.ExecContext(ctx, query, values...)
-	if err != nil {
-		return errors.Wrap(err, "failed to remove relationships before set")
-	}
-
-	if o.R != nil {
-		for _, rel := range o.R.TargetBlocks {
-			queries.SetScanner(&rel.TargetID, nil)
-			if rel.R == nil {
-				continue
-			}
-
-			rel.R.Target = nil
-		}
-		o.R.TargetBlocks = nil
-	}
-
-	return o.AddTargetBlocks(ctx, exec, insert, related...)
-}
-
-// RemoveTargetBlocks relationships from objects passed in.
-// Removes related items from R.TargetBlocks (uses pointer comparison, removal does not keep order)
-// Sets related.R.Target.
-func (o *User) RemoveTargetBlocks(ctx context.Context, exec boil.ContextExecutor, related ...*Block) error {
-	if len(related) == 0 {
-		return nil
-	}
-
-	var err error
-	for _, rel := range related {
-		queries.SetScanner(&rel.TargetID, nil)
-		if rel.R != nil {
-			rel.R.Target = nil
-		}
-		if _, err = rel.Update(ctx, exec, boil.Whitelist("target_id")); err != nil {
-			return err
-		}
-	}
-	if o.R == nil {
-		return nil
-	}
-
-	for _, rel := range related {
-		for i, ri := range o.R.TargetBlocks {
-			if rel != ri {
-				continue
-			}
-
-			ln := len(o.R.TargetBlocks)
-			if ln > 1 && i < ln-1 {
-				o.R.TargetBlocks[i] = o.R.TargetBlocks[ln-1]
-			}
-			o.R.TargetBlocks = o.R.TargetBlocks[:ln-1]
-			break
-		}
-	}
-
-	return nil
-}
-
-// AddUser1Friendships adds the given related objects to the existing relationships
+// AddUser1Friends adds the given related objects to the existing relationships
 // of the user, optionally inserting them as new records.
-// Appends related to o.R.User1Friendships.
+// Appends related to o.R.User1Friends.
 // Sets related.R.User1 appropriately.
-func (o *User) AddUser1Friendships(ctx context.Context, exec boil.ContextExecutor, insert bool, related ...*Friendship) error {
+func (o *User) AddUser1Friends(ctx context.Context, exec boil.ContextExecutor, insert bool, related ...*Friend) error {
 	var err error
 	for _, rel := range related {
 		if insert {
-			queries.Assign(&rel.User1ID, o.ID)
+			rel.User1ID = o.ID
 			if err = rel.Insert(ctx, exec, boil.Infer()); err != nil {
 				return errors.Wrap(err, "failed to insert into foreign table")
 			}
 		} else {
 			updateQuery := fmt.Sprintf(
-				"UPDATE \"friendships\" SET %s WHERE %s",
+				"UPDATE \"friends\" SET %s WHERE %s",
 				strmangle.SetParamNames("\"", "\"", 1, []string{"user1_id"}),
-				strmangle.WhereClause("\"", "\"", 2, friendshipPrimaryKeyColumns),
+				strmangle.WhereClause("\"", "\"", 2, friendPrimaryKeyColumns),
 			)
 			values := []interface{}{o.ID, rel.ID}
 
@@ -1602,21 +1428,21 @@ func (o *User) AddUser1Friendships(ctx context.Context, exec boil.ContextExecuto
 				return errors.Wrap(err, "failed to update foreign table")
 			}
 
-			queries.Assign(&rel.User1ID, o.ID)
+			rel.User1ID = o.ID
 		}
 	}
 
 	if o.R == nil {
 		o.R = &userR{
-			User1Friendships: related,
+			User1Friends: related,
 		}
 	} else {
-		o.R.User1Friendships = append(o.R.User1Friendships, related...)
+		o.R.User1Friends = append(o.R.User1Friends, related...)
 	}
 
 	for _, rel := range related {
 		if rel.R == nil {
-			rel.R = &friendshipR{
+			rel.R = &friendR{
 				User1: o,
 			}
 		} else {
@@ -1626,97 +1452,23 @@ func (o *User) AddUser1Friendships(ctx context.Context, exec boil.ContextExecuto
 	return nil
 }
 
-// SetUser1Friendships removes all previously related items of the
-// user replacing them completely with the passed
-// in related items, optionally inserting them as new records.
-// Sets o.R.User1's User1Friendships accordingly.
-// Replaces o.R.User1Friendships with related.
-// Sets related.R.User1's User1Friendships accordingly.
-func (o *User) SetUser1Friendships(ctx context.Context, exec boil.ContextExecutor, insert bool, related ...*Friendship) error {
-	query := "update \"friendships\" set \"user1_id\" = null where \"user1_id\" = $1"
-	values := []interface{}{o.ID}
-	if boil.IsDebug(ctx) {
-		writer := boil.DebugWriterFrom(ctx)
-		fmt.Fprintln(writer, query)
-		fmt.Fprintln(writer, values)
-	}
-	_, err := exec.ExecContext(ctx, query, values...)
-	if err != nil {
-		return errors.Wrap(err, "failed to remove relationships before set")
-	}
-
-	if o.R != nil {
-		for _, rel := range o.R.User1Friendships {
-			queries.SetScanner(&rel.User1ID, nil)
-			if rel.R == nil {
-				continue
-			}
-
-			rel.R.User1 = nil
-		}
-		o.R.User1Friendships = nil
-	}
-
-	return o.AddUser1Friendships(ctx, exec, insert, related...)
-}
-
-// RemoveUser1Friendships relationships from objects passed in.
-// Removes related items from R.User1Friendships (uses pointer comparison, removal does not keep order)
-// Sets related.R.User1.
-func (o *User) RemoveUser1Friendships(ctx context.Context, exec boil.ContextExecutor, related ...*Friendship) error {
-	if len(related) == 0 {
-		return nil
-	}
-
-	var err error
-	for _, rel := range related {
-		queries.SetScanner(&rel.User1ID, nil)
-		if rel.R != nil {
-			rel.R.User1 = nil
-		}
-		if _, err = rel.Update(ctx, exec, boil.Whitelist("user1_id")); err != nil {
-			return err
-		}
-	}
-	if o.R == nil {
-		return nil
-	}
-
-	for _, rel := range related {
-		for i, ri := range o.R.User1Friendships {
-			if rel != ri {
-				continue
-			}
-
-			ln := len(o.R.User1Friendships)
-			if ln > 1 && i < ln-1 {
-				o.R.User1Friendships[i] = o.R.User1Friendships[ln-1]
-			}
-			o.R.User1Friendships = o.R.User1Friendships[:ln-1]
-			break
-		}
-	}
-
-	return nil
-}
-
-// AddUser2Friendships adds the given related objects to the existing relationships
+// AddUser2Friends adds the given related objects to the existing relationships
 // of the user, optionally inserting them as new records.
-// Appends related to o.R.User2Friendships.
+// Appends related to o.R.User2Friends.
 // Sets related.R.User2 appropriately.
-func (o *User) AddUser2Friendships(ctx context.Context, exec boil.ContextExecutor, insert bool, related ...*Friendship) error {
+func (o *User) AddUser2Friends(ctx context.Context, exec boil.ContextExecutor, insert bool, related ...*Friend) error {
 	var err error
 	for _, rel := range related {
 		if insert {
-			queries.Assign(&rel.User2ID, o.ID)
+			rel.User2ID = o.ID
 			if err = rel.Insert(ctx, exec, boil.Infer()); err != nil {
 				return errors.Wrap(err, "failed to insert into foreign table")
 			}
 		} else {
 			updateQuery := fmt.Sprintf(
-				"UPDATE \"friendships\" SET %s WHERE %s",
+				"UPDATE \"friends\" SET %s WHERE %s",
 				strmangle.SetParamNames("\"", "\"", 1, []string{"user2_id"}),
-				strmangle.WhereClause("\"", "\"", 2, friendshipPrimaryKeyColumns),
+				strmangle.WhereClause("\"", "\"", 2, friendPrimaryKeyColumns),
 			)
 			values := []interface{}{o.ID, rel.ID}
 
@@ -1729,21 +1481,21 @@ func (o *User) AddUser2Friendships(ctx context.Context, exec boil.ContextExecuto
 				return errors.Wrap(err, "failed to update foreign table")
 			}
 
-			queries.Assign(&rel.User2ID, o.ID)
+			rel.User2ID = o.ID
 		}
 	}
 
 	if o.R == nil {
 		o.R = &userR{
-			User2Friendships: related,
+			User2Friends: related,
 		}
 	} else {
-		o.R.User2Friendships = append(o.R.User2Friendships, related...)
+		o.R.User2Friends = append(o.R.User2Friends, related...)
 	}
 
 	for _, rel := range related {
 		if rel.R == nil {
-			rel.R = &friendshipR{
+			rel.R = &friendR{
 				User2: o,
 			}
 		} else {
@@ -1753,96 +1505,22 @@ func (o *User) AddUser2Friendships(ctx context.Context, exec boil.ContextExecuto
 	return nil
 }
 
-// SetUser2Friendships removes all previously related items of the
-// user replacing them completely with the passed
-// in related items, optionally inserting them as new records.
-// Sets o.R.User2's User2Friendships accordingly.
-// Replaces o.R.User2Friendships with related.
-// Sets related.R.User2's User2Friendships accordingly.
-func (o *User) SetUser2Friendships(ctx context.Context, exec boil.ContextExecutor, insert bool, related ...*Friendship) error {
-	query := "update \"friendships\" set \"user2_id\" = null where \"user2_id\" = $1"
-	values := []interface{}{o.ID}
-	if boil.IsDebug(ctx) {
-		writer := boil.DebugWriterFrom(ctx)
-		fmt.Fprintln(writer, query)
-		fmt.Fprintln(writer, values)
-	}
-	_, err := exec.ExecContext(ctx, query, values...)
-	if err != nil {
-		return errors.Wrap(err, "failed to remove relationships before set")
-	}
-
-	if o.R != nil {
-		for _, rel := range o.R.User2Friendships {
-			queries.SetScanner(&rel.User2ID, nil)
-			if rel.R == nil {
-				continue
-			}
-
-			rel.R.User2 = nil
-		}
-		o.R.User2Friendships = nil
-	}
-
-	return o.AddUser2Friendships(ctx, exec, insert, related...)
-}
-
-// RemoveUser2Friendships relationships from objects passed in.
-// Removes related items from R.User2Friendships (uses pointer comparison, removal does not keep order)
-// Sets related.R.User2.
-func (o *User) RemoveUser2Friendships(ctx context.Context, exec boil.ContextExecutor, related ...*Friendship) error {
-	if len(related) == 0 {
-		return nil
-	}
-
-	var err error
-	for _, rel := range related {
-		queries.SetScanner(&rel.User2ID, nil)
-		if rel.R != nil {
-			rel.R.User2 = nil
-		}
-		if _, err = rel.Update(ctx, exec, boil.Whitelist("user2_id")); err != nil {
-			return err
-		}
-	}
-	if o.R == nil {
-		return nil
-	}
-
-	for _, rel := range related {
-		for i, ri := range o.R.User2Friendships {
-			if rel != ri {
-				continue
-			}
-
-			ln := len(o.R.User2Friendships)
-			if ln > 1 && i < ln-1 {
-				o.R.User2Friendships[i] = o.R.User2Friendships[ln-1]
-			}
-			o.R.User2Friendships = o.R.User2Friendships[:ln-1]
-			break
-		}
-	}
-
-	return nil
-}
-
-// AddRequestorSubscriptions adds the given related objects to the existing relationships
+// AddSubscriberSubscriptions adds the given related objects to the existing relationships
 // of the user, optionally inserting them as new records.
-// Appends related to o.R.RequestorSubscriptions.
-// Sets related.R.Requestor appropriately.
-func (o *User) AddRequestorSubscriptions(ctx context.Context, exec boil.ContextExecutor, insert bool, related ...*Subscription) error {
+// Appends related to o.R.SubscriberSubscriptions.
+// Sets related.R.Subscriber appropriately.
+func (o *User) AddSubscriberSubscriptions(ctx context.Context, exec boil.ContextExecutor, insert bool, related ...*Subscription) error {
 	var err error
 	for _, rel := range related {
 		if insert {
-			queries.Assign(&rel.RequestorID, o.ID)
+			rel.SubscriberID = o.ID
 			if err = rel.Insert(ctx, exec, boil.Infer()); err != nil {
 				return errors.Wrap(err, "failed to insert into foreign table")
 			}
 		} else {
 			updateQuery := fmt.Sprintf(
 				"UPDATE \"subscriptions\" SET %s WHERE %s",
-				strmangle.SetParamNames("\"", "\"", 1, []string{"requestor_id"}),
+				strmangle.SetParamNames("\"", "\"", 1, []string{"subscriber_id"}),
 				strmangle.WhereClause("\"", "\"", 2, subscriptionPrimaryKeyColumns),
 			)
 			values := []interface{}{o.ID, rel.ID}
@@ -1856,101 +1534,27 @@ func (o *User) AddRequestorSubscriptions(ctx context.Context, exec boil.ContextE
 				return errors.Wrap(err, "failed to update foreign table")
 			}
 
-			queries.Assign(&rel.RequestorID, o.ID)
+			rel.SubscriberID = o.ID
 		}
 	}
 
 	if o.R == nil {
 		o.R = &userR{
-			RequestorSubscriptions: related,
+			SubscriberSubscriptions: related,
 		}
 	} else {
-		o.R.RequestorSubscriptions = append(o.R.RequestorSubscriptions, related...)
+		o.R.SubscriberSubscriptions = append(o.R.SubscriberSubscriptions, related...)
 	}
 
 	for _, rel := range related {
 		if rel.R == nil {
 			rel.R = &subscriptionR{
-				Requestor: o,
+				Subscriber: o,
 			}
 		} else {
-			rel.R.Requestor = o
+			rel.R.Subscriber = o
 		}
 	}
-	return nil
-}
-
-// SetRequestorSubscriptions removes all previously related items of the
-// user replacing them completely with the passed
-// in related items, optionally inserting them as new records.
-// Sets o.R.Requestor's RequestorSubscriptions accordingly.
-// Replaces o.R.RequestorSubscriptions with related.
-// Sets related.R.Requestor's RequestorSubscriptions accordingly.
-func (o *User) SetRequestorSubscriptions(ctx context.Context, exec boil.ContextExecutor, insert bool, related ...*Subscription) error {
-	query := "update \"subscriptions\" set \"requestor_id\" = null where \"requestor_id\" = $1"
-	values := []interface{}{o.ID}
-	if boil.IsDebug(ctx) {
-		writer := boil.DebugWriterFrom(ctx)
-		fmt.Fprintln(writer, query)
-		fmt.Fprintln(writer, values)
-	}
-	_, err := exec.ExecContext(ctx, query, values...)
-	if err != nil {
-		return errors.Wrap(err, "failed to remove relationships before set")
-	}
-
-	if o.R != nil {
-		for _, rel := range o.R.RequestorSubscriptions {
-			queries.SetScanner(&rel.RequestorID, nil)
-			if rel.R == nil {
-				continue
-			}
-
-			rel.R.Requestor = nil
-		}
-		o.R.RequestorSubscriptions = nil
-	}
-
-	return o.AddRequestorSubscriptions(ctx, exec, insert, related...)
-}
-
-// RemoveRequestorSubscriptions relationships from objects passed in.
-// Removes related items from R.RequestorSubscriptions (uses pointer comparison, removal does not keep order)
-// Sets related.R.Requestor.
-func (o *User) RemoveRequestorSubscriptions(ctx context.Context, exec boil.ContextExecutor, related ...*Subscription) error {
-	if len(related) == 0 {
-		return nil
-	}
-
-	var err error
-	for _, rel := range related {
-		queries.SetScanner(&rel.RequestorID, nil)
-		if rel.R != nil {
-			rel.R.Requestor = nil
-		}
-		if _, err = rel.Update(ctx, exec, boil.Whitelist("requestor_id")); err != nil {
-			return err
-		}
-	}
-	if o.R == nil {
-		return nil
-	}
-
-	for _, rel := range related {
-		for i, ri := range o.R.RequestorSubscriptions {
-			if rel != ri {
-				continue
-			}
-
-			ln := len(o.R.RequestorSubscriptions)
-			if ln > 1 && i < ln-1 {
-				o.R.RequestorSubscriptions[i] = o.R.RequestorSubscriptions[ln-1]
-			}
-			o.R.RequestorSubscriptions = o.R.RequestorSubscriptions[:ln-1]
-			break
-		}
-	}
-
 	return nil
 }
 
@@ -1962,7 +1566,7 @@ func (o *User) AddTargetSubscriptions(ctx context.Context, exec boil.ContextExec
 	var err error
 	for _, rel := range related {
 		if insert {
-			queries.Assign(&rel.TargetID, o.ID)
+			rel.TargetID = o.ID
 			if err = rel.Insert(ctx, exec, boil.Infer()); err != nil {
 				return errors.Wrap(err, "failed to insert into foreign table")
 			}
@@ -1983,7 +1587,7 @@ func (o *User) AddTargetSubscriptions(ctx context.Context, exec boil.ContextExec
 				return errors.Wrap(err, "failed to update foreign table")
 			}
 
-			queries.Assign(&rel.TargetID, o.ID)
+			rel.TargetID = o.ID
 		}
 	}
 
@@ -2004,80 +1608,6 @@ func (o *User) AddTargetSubscriptions(ctx context.Context, exec boil.ContextExec
 			rel.R.Target = o
 		}
 	}
-	return nil
-}
-
-// SetTargetSubscriptions removes all previously related items of the
-// user replacing them completely with the passed
-// in related items, optionally inserting them as new records.
-// Sets o.R.Target's TargetSubscriptions accordingly.
-// Replaces o.R.TargetSubscriptions with related.
-// Sets related.R.Target's TargetSubscriptions accordingly.
-func (o *User) SetTargetSubscriptions(ctx context.Context, exec boil.ContextExecutor, insert bool, related ...*Subscription) error {
-	query := "update \"subscriptions\" set \"target_id\" = null where \"target_id\" = $1"
-	values := []interface{}{o.ID}
-	if boil.IsDebug(ctx) {
-		writer := boil.DebugWriterFrom(ctx)
-		fmt.Fprintln(writer, query)
-		fmt.Fprintln(writer, values)
-	}
-	_, err := exec.ExecContext(ctx, query, values...)
-	if err != nil {
-		return errors.Wrap(err, "failed to remove relationships before set")
-	}
-
-	if o.R != nil {
-		for _, rel := range o.R.TargetSubscriptions {
-			queries.SetScanner(&rel.TargetID, nil)
-			if rel.R == nil {
-				continue
-			}
-
-			rel.R.Target = nil
-		}
-		o.R.TargetSubscriptions = nil
-	}
-
-	return o.AddTargetSubscriptions(ctx, exec, insert, related...)
-}
-
-// RemoveTargetSubscriptions relationships from objects passed in.
-// Removes related items from R.TargetSubscriptions (uses pointer comparison, removal does not keep order)
-// Sets related.R.Target.
-func (o *User) RemoveTargetSubscriptions(ctx context.Context, exec boil.ContextExecutor, related ...*Subscription) error {
-	if len(related) == 0 {
-		return nil
-	}
-
-	var err error
-	for _, rel := range related {
-		queries.SetScanner(&rel.TargetID, nil)
-		if rel.R != nil {
-			rel.R.Target = nil
-		}
-		if _, err = rel.Update(ctx, exec, boil.Whitelist("target_id")); err != nil {
-			return err
-		}
-	}
-	if o.R == nil {
-		return nil
-	}
-
-	for _, rel := range related {
-		for i, ri := range o.R.TargetSubscriptions {
-			if rel != ri {
-				continue
-			}
-
-			ln := len(o.R.TargetSubscriptions)
-			if ln > 1 && i < ln-1 {
-				o.R.TargetSubscriptions[i] = o.R.TargetSubscriptions[ln-1]
-			}
-			o.R.TargetSubscriptions = o.R.TargetSubscriptions[:ln-1]
-			break
-		}
-	}
-
 	return nil
 }
 

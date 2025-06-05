@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/friendsofgo/errors"
-	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -24,59 +23,59 @@ import (
 
 // Subscription is an object representing the database table.
 type Subscription struct {
-	ID          int      `boil:"id" json:"id" toml:"id" yaml:"id"`
-	RequestorID null.Int `boil:"requestor_id" json:"requestor_id,omitempty" toml:"requestor_id" yaml:"requestor_id,omitempty"`
-	TargetID    null.Int `boil:"target_id" json:"target_id,omitempty" toml:"target_id" yaml:"target_id,omitempty"`
+	ID           int `boil:"id" json:"id" toml:"id" yaml:"id"`
+	SubscriberID int `boil:"subscriber_id" json:"subscriber_id" toml:"subscriber_id" yaml:"subscriber_id"`
+	TargetID     int `boil:"target_id" json:"target_id" toml:"target_id" yaml:"target_id"`
 
 	R *subscriptionR `boil:"-" json:"-" toml:"-" yaml:"-"`
 	L subscriptionL  `boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var SubscriptionColumns = struct {
-	ID          string
-	RequestorID string
-	TargetID    string
+	ID           string
+	SubscriberID string
+	TargetID     string
 }{
-	ID:          "id",
-	RequestorID: "requestor_id",
-	TargetID:    "target_id",
+	ID:           "id",
+	SubscriberID: "subscriber_id",
+	TargetID:     "target_id",
 }
 
 var SubscriptionTableColumns = struct {
-	ID          string
-	RequestorID string
-	TargetID    string
+	ID           string
+	SubscriberID string
+	TargetID     string
 }{
-	ID:          "subscriptions.id",
-	RequestorID: "subscriptions.requestor_id",
-	TargetID:    "subscriptions.target_id",
+	ID:           "subscriptions.id",
+	SubscriberID: "subscriptions.subscriber_id",
+	TargetID:     "subscriptions.target_id",
 }
 
 // Generated where
 
 var SubscriptionWhere = struct {
-	ID          whereHelperint
-	RequestorID whereHelpernull_Int
-	TargetID    whereHelpernull_Int
+	ID           whereHelperint
+	SubscriberID whereHelperint
+	TargetID     whereHelperint
 }{
-	ID:          whereHelperint{field: "\"subscriptions\".\"id\""},
-	RequestorID: whereHelpernull_Int{field: "\"subscriptions\".\"requestor_id\""},
-	TargetID:    whereHelpernull_Int{field: "\"subscriptions\".\"target_id\""},
+	ID:           whereHelperint{field: "\"subscriptions\".\"id\""},
+	SubscriberID: whereHelperint{field: "\"subscriptions\".\"subscriber_id\""},
+	TargetID:     whereHelperint{field: "\"subscriptions\".\"target_id\""},
 }
 
 // SubscriptionRels is where relationship names are stored.
 var SubscriptionRels = struct {
-	Requestor string
-	Target    string
+	Subscriber string
+	Target     string
 }{
-	Requestor: "Requestor",
-	Target:    "Target",
+	Subscriber: "Subscriber",
+	Target:     "Target",
 }
 
 // subscriptionR is where relationships are stored.
 type subscriptionR struct {
-	Requestor *User `boil:"Requestor" json:"Requestor" toml:"Requestor" yaml:"Requestor"`
-	Target    *User `boil:"Target" json:"Target" toml:"Target" yaml:"Target"`
+	Subscriber *User `boil:"Subscriber" json:"Subscriber" toml:"Subscriber" yaml:"Subscriber"`
+	Target     *User `boil:"Target" json:"Target" toml:"Target" yaml:"Target"`
 }
 
 // NewStruct creates a new relationship struct
@@ -84,20 +83,20 @@ func (*subscriptionR) NewStruct() *subscriptionR {
 	return &subscriptionR{}
 }
 
-func (o *Subscription) GetRequestor() *User {
+func (o *Subscription) GetSubscriber() *User {
 	if o == nil {
 		return nil
 	}
 
-	return o.R.GetRequestor()
+	return o.R.GetSubscriber()
 }
 
-func (r *subscriptionR) GetRequestor() *User {
+func (r *subscriptionR) GetSubscriber() *User {
 	if r == nil {
 		return nil
 	}
 
-	return r.Requestor
+	return r.Subscriber
 }
 
 func (o *Subscription) GetTarget() *User {
@@ -120,9 +119,9 @@ func (r *subscriptionR) GetTarget() *User {
 type subscriptionL struct{}
 
 var (
-	subscriptionAllColumns            = []string{"id", "requestor_id", "target_id"}
-	subscriptionColumnsWithoutDefault = []string{"id"}
-	subscriptionColumnsWithDefault    = []string{"requestor_id", "target_id"}
+	subscriptionAllColumns            = []string{"id", "subscriber_id", "target_id"}
+	subscriptionColumnsWithoutDefault = []string{"subscriber_id", "target_id"}
+	subscriptionColumnsWithDefault    = []string{"id"}
 	subscriptionPrimaryKeyColumns     = []string{"id"}
 	subscriptionGeneratedColumns      = []string{}
 )
@@ -432,10 +431,10 @@ func (q subscriptionQuery) Exists(ctx context.Context, exec boil.ContextExecutor
 	return count > 0, nil
 }
 
-// Requestor pointed to by the foreign key.
-func (o *Subscription) Requestor(mods ...qm.QueryMod) userQuery {
+// Subscriber pointed to by the foreign key.
+func (o *Subscription) Subscriber(mods ...qm.QueryMod) userQuery {
 	queryMods := []qm.QueryMod{
-		qm.Where("\"id\" = ?", o.RequestorID),
+		qm.Where("\"id\" = ?", o.SubscriberID),
 	}
 
 	queryMods = append(queryMods, mods...)
@@ -454,9 +453,9 @@ func (o *Subscription) Target(mods ...qm.QueryMod) userQuery {
 	return Users(queryMods...)
 }
 
-// LoadRequestor allows an eager lookup of values, cached into the
+// LoadSubscriber allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
-func (subscriptionL) LoadRequestor(ctx context.Context, e boil.ContextExecutor, singular bool, maybeSubscription interface{}, mods queries.Applicator) error {
+func (subscriptionL) LoadSubscriber(ctx context.Context, e boil.ContextExecutor, singular bool, maybeSubscription interface{}, mods queries.Applicator) error {
 	var slice []*Subscription
 	var object *Subscription
 
@@ -487,9 +486,7 @@ func (subscriptionL) LoadRequestor(ctx context.Context, e boil.ContextExecutor, 
 		if object.R == nil {
 			object.R = &subscriptionR{}
 		}
-		if !queries.IsNil(object.RequestorID) {
-			args[object.RequestorID] = struct{}{}
-		}
+		args[object.SubscriberID] = struct{}{}
 
 	} else {
 		for _, obj := range slice {
@@ -497,9 +494,7 @@ func (subscriptionL) LoadRequestor(ctx context.Context, e boil.ContextExecutor, 
 				obj.R = &subscriptionR{}
 			}
 
-			if !queries.IsNil(obj.RequestorID) {
-				args[obj.RequestorID] = struct{}{}
-			}
+			args[obj.SubscriberID] = struct{}{}
 
 		}
 	}
@@ -554,22 +549,22 @@ func (subscriptionL) LoadRequestor(ctx context.Context, e boil.ContextExecutor, 
 
 	if singular {
 		foreign := resultSlice[0]
-		object.R.Requestor = foreign
+		object.R.Subscriber = foreign
 		if foreign.R == nil {
 			foreign.R = &userR{}
 		}
-		foreign.R.RequestorSubscriptions = append(foreign.R.RequestorSubscriptions, object)
+		foreign.R.SubscriberSubscriptions = append(foreign.R.SubscriberSubscriptions, object)
 		return nil
 	}
 
 	for _, local := range slice {
 		for _, foreign := range resultSlice {
-			if queries.Equal(local.RequestorID, foreign.ID) {
-				local.R.Requestor = foreign
+			if local.SubscriberID == foreign.ID {
+				local.R.Subscriber = foreign
 				if foreign.R == nil {
 					foreign.R = &userR{}
 				}
-				foreign.R.RequestorSubscriptions = append(foreign.R.RequestorSubscriptions, local)
+				foreign.R.SubscriberSubscriptions = append(foreign.R.SubscriberSubscriptions, local)
 				break
 			}
 		}
@@ -611,9 +606,7 @@ func (subscriptionL) LoadTarget(ctx context.Context, e boil.ContextExecutor, sin
 		if object.R == nil {
 			object.R = &subscriptionR{}
 		}
-		if !queries.IsNil(object.TargetID) {
-			args[object.TargetID] = struct{}{}
-		}
+		args[object.TargetID] = struct{}{}
 
 	} else {
 		for _, obj := range slice {
@@ -621,9 +614,7 @@ func (subscriptionL) LoadTarget(ctx context.Context, e boil.ContextExecutor, sin
 				obj.R = &subscriptionR{}
 			}
 
-			if !queries.IsNil(obj.TargetID) {
-				args[obj.TargetID] = struct{}{}
-			}
+			args[obj.TargetID] = struct{}{}
 
 		}
 	}
@@ -688,7 +679,7 @@ func (subscriptionL) LoadTarget(ctx context.Context, e boil.ContextExecutor, sin
 
 	for _, local := range slice {
 		for _, foreign := range resultSlice {
-			if queries.Equal(local.TargetID, foreign.ID) {
+			if local.TargetID == foreign.ID {
 				local.R.Target = foreign
 				if foreign.R == nil {
 					foreign.R = &userR{}
@@ -702,10 +693,10 @@ func (subscriptionL) LoadTarget(ctx context.Context, e boil.ContextExecutor, sin
 	return nil
 }
 
-// SetRequestor of the subscription to the related item.
-// Sets o.R.Requestor to related.
-// Adds o to related.R.RequestorSubscriptions.
-func (o *Subscription) SetRequestor(ctx context.Context, exec boil.ContextExecutor, insert bool, related *User) error {
+// SetSubscriber of the subscription to the related item.
+// Sets o.R.Subscriber to related.
+// Adds o to related.R.SubscriberSubscriptions.
+func (o *Subscription) SetSubscriber(ctx context.Context, exec boil.ContextExecutor, insert bool, related *User) error {
 	var err error
 	if insert {
 		if err = related.Insert(ctx, exec, boil.Infer()); err != nil {
@@ -715,7 +706,7 @@ func (o *Subscription) SetRequestor(ctx context.Context, exec boil.ContextExecut
 
 	updateQuery := fmt.Sprintf(
 		"UPDATE \"subscriptions\" SET %s WHERE %s",
-		strmangle.SetParamNames("\"", "\"", 1, []string{"requestor_id"}),
+		strmangle.SetParamNames("\"", "\"", 1, []string{"subscriber_id"}),
 		strmangle.WhereClause("\"", "\"", 2, subscriptionPrimaryKeyColumns),
 	)
 	values := []interface{}{related.ID, o.ID}
@@ -729,56 +720,23 @@ func (o *Subscription) SetRequestor(ctx context.Context, exec boil.ContextExecut
 		return errors.Wrap(err, "failed to update local table")
 	}
 
-	queries.Assign(&o.RequestorID, related.ID)
+	o.SubscriberID = related.ID
 	if o.R == nil {
 		o.R = &subscriptionR{
-			Requestor: related,
+			Subscriber: related,
 		}
 	} else {
-		o.R.Requestor = related
+		o.R.Subscriber = related
 	}
 
 	if related.R == nil {
 		related.R = &userR{
-			RequestorSubscriptions: SubscriptionSlice{o},
+			SubscriberSubscriptions: SubscriptionSlice{o},
 		}
 	} else {
-		related.R.RequestorSubscriptions = append(related.R.RequestorSubscriptions, o)
+		related.R.SubscriberSubscriptions = append(related.R.SubscriberSubscriptions, o)
 	}
 
-	return nil
-}
-
-// RemoveRequestor relationship.
-// Sets o.R.Requestor to nil.
-// Removes o from all passed in related items' relationships struct.
-func (o *Subscription) RemoveRequestor(ctx context.Context, exec boil.ContextExecutor, related *User) error {
-	var err error
-
-	queries.SetScanner(&o.RequestorID, nil)
-	if _, err = o.Update(ctx, exec, boil.Whitelist("requestor_id")); err != nil {
-		return errors.Wrap(err, "failed to update local table")
-	}
-
-	if o.R != nil {
-		o.R.Requestor = nil
-	}
-	if related == nil || related.R == nil {
-		return nil
-	}
-
-	for i, ri := range related.R.RequestorSubscriptions {
-		if queries.Equal(o.RequestorID, ri.RequestorID) {
-			continue
-		}
-
-		ln := len(related.R.RequestorSubscriptions)
-		if ln > 1 && i < ln-1 {
-			related.R.RequestorSubscriptions[i] = related.R.RequestorSubscriptions[ln-1]
-		}
-		related.R.RequestorSubscriptions = related.R.RequestorSubscriptions[:ln-1]
-		break
-	}
 	return nil
 }
 
@@ -809,7 +767,7 @@ func (o *Subscription) SetTarget(ctx context.Context, exec boil.ContextExecutor,
 		return errors.Wrap(err, "failed to update local table")
 	}
 
-	queries.Assign(&o.TargetID, related.ID)
+	o.TargetID = related.ID
 	if o.R == nil {
 		o.R = &subscriptionR{
 			Target: related,
@@ -826,39 +784,6 @@ func (o *Subscription) SetTarget(ctx context.Context, exec boil.ContextExecutor,
 		related.R.TargetSubscriptions = append(related.R.TargetSubscriptions, o)
 	}
 
-	return nil
-}
-
-// RemoveTarget relationship.
-// Sets o.R.Target to nil.
-// Removes o from all passed in related items' relationships struct.
-func (o *Subscription) RemoveTarget(ctx context.Context, exec boil.ContextExecutor, related *User) error {
-	var err error
-
-	queries.SetScanner(&o.TargetID, nil)
-	if _, err = o.Update(ctx, exec, boil.Whitelist("target_id")); err != nil {
-		return errors.Wrap(err, "failed to update local table")
-	}
-
-	if o.R != nil {
-		o.R.Target = nil
-	}
-	if related == nil || related.R == nil {
-		return nil
-	}
-
-	for i, ri := range related.R.TargetSubscriptions {
-		if queries.Equal(o.TargetID, ri.TargetID) {
-			continue
-		}
-
-		ln := len(related.R.TargetSubscriptions)
-		if ln > 1 && i < ln-1 {
-			related.R.TargetSubscriptions[i] = related.R.TargetSubscriptions[ln-1]
-		}
-		related.R.TargetSubscriptions = related.R.TargetSubscriptions[:ln-1]
-		break
-	}
 	return nil
 }
 

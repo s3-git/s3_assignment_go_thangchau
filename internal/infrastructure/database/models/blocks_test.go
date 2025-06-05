@@ -494,7 +494,7 @@ func testBlocksInsertWhitelist(t *testing.T) {
 	}
 }
 
-func testBlockToOneUserUsingRequestor(t *testing.T) {
+func testBlockToOneUserUsingBlocked(t *testing.T) {
 	ctx := context.Background()
 	tx := MustTx(boil.BeginTx(ctx, nil))
 	defer func() { _ = tx.Rollback() }()
@@ -503,7 +503,7 @@ func testBlockToOneUserUsingRequestor(t *testing.T) {
 	var foreign User
 
 	seed := randomize.NewSeed()
-	if err := randomize.Struct(seed, &local, blockDBTypes, true, blockColumnsWithDefault...); err != nil {
+	if err := randomize.Struct(seed, &local, blockDBTypes, false, blockColumnsWithDefault...); err != nil {
 		t.Errorf("Unable to randomize Block struct: %s", err)
 	}
 	if err := randomize.Struct(seed, &foreign, userDBTypes, false, userColumnsWithDefault...); err != nil {
@@ -514,17 +514,17 @@ func testBlockToOneUserUsingRequestor(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	queries.Assign(&local.RequestorID, foreign.ID)
+	local.BlockedID = foreign.ID
 	if err := local.Insert(ctx, tx, boil.Infer()); err != nil {
 		t.Fatal(err)
 	}
 
-	check, err := local.Requestor().One(ctx, tx)
+	check, err := local.Blocked().One(ctx, tx)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if !queries.Equal(check.ID, foreign.ID) {
+	if check.ID != foreign.ID {
 		t.Errorf("want: %v, got %v", foreign.ID, check.ID)
 	}
 
@@ -535,18 +535,18 @@ func testBlockToOneUserUsingRequestor(t *testing.T) {
 	})
 
 	slice := BlockSlice{&local}
-	if err = local.L.LoadRequestor(ctx, tx, false, (*[]*Block)(&slice), nil); err != nil {
+	if err = local.L.LoadBlocked(ctx, tx, false, (*[]*Block)(&slice), nil); err != nil {
 		t.Fatal(err)
 	}
-	if local.R.Requestor == nil {
+	if local.R.Blocked == nil {
 		t.Error("struct should have been eager loaded")
 	}
 
-	local.R.Requestor = nil
-	if err = local.L.LoadRequestor(ctx, tx, true, &local, nil); err != nil {
+	local.R.Blocked = nil
+	if err = local.L.LoadBlocked(ctx, tx, true, &local, nil); err != nil {
 		t.Fatal(err)
 	}
-	if local.R.Requestor == nil {
+	if local.R.Blocked == nil {
 		t.Error("struct should have been eager loaded")
 	}
 
@@ -555,7 +555,7 @@ func testBlockToOneUserUsingRequestor(t *testing.T) {
 	}
 }
 
-func testBlockToOneUserUsingTarget(t *testing.T) {
+func testBlockToOneUserUsingBlocker(t *testing.T) {
 	ctx := context.Background()
 	tx := MustTx(boil.BeginTx(ctx, nil))
 	defer func() { _ = tx.Rollback() }()
@@ -564,7 +564,7 @@ func testBlockToOneUserUsingTarget(t *testing.T) {
 	var foreign User
 
 	seed := randomize.NewSeed()
-	if err := randomize.Struct(seed, &local, blockDBTypes, true, blockColumnsWithDefault...); err != nil {
+	if err := randomize.Struct(seed, &local, blockDBTypes, false, blockColumnsWithDefault...); err != nil {
 		t.Errorf("Unable to randomize Block struct: %s", err)
 	}
 	if err := randomize.Struct(seed, &foreign, userDBTypes, false, userColumnsWithDefault...); err != nil {
@@ -575,17 +575,17 @@ func testBlockToOneUserUsingTarget(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	queries.Assign(&local.TargetID, foreign.ID)
+	local.BlockerID = foreign.ID
 	if err := local.Insert(ctx, tx, boil.Infer()); err != nil {
 		t.Fatal(err)
 	}
 
-	check, err := local.Target().One(ctx, tx)
+	check, err := local.Blocker().One(ctx, tx)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if !queries.Equal(check.ID, foreign.ID) {
+	if check.ID != foreign.ID {
 		t.Errorf("want: %v, got %v", foreign.ID, check.ID)
 	}
 
@@ -596,18 +596,18 @@ func testBlockToOneUserUsingTarget(t *testing.T) {
 	})
 
 	slice := BlockSlice{&local}
-	if err = local.L.LoadTarget(ctx, tx, false, (*[]*Block)(&slice), nil); err != nil {
+	if err = local.L.LoadBlocker(ctx, tx, false, (*[]*Block)(&slice), nil); err != nil {
 		t.Fatal(err)
 	}
-	if local.R.Target == nil {
+	if local.R.Blocker == nil {
 		t.Error("struct should have been eager loaded")
 	}
 
-	local.R.Target = nil
-	if err = local.L.LoadTarget(ctx, tx, true, &local, nil); err != nil {
+	local.R.Blocker = nil
+	if err = local.L.LoadBlocker(ctx, tx, true, &local, nil); err != nil {
 		t.Fatal(err)
 	}
-	if local.R.Target == nil {
+	if local.R.Blocker == nil {
 		t.Error("struct should have been eager loaded")
 	}
 
@@ -616,7 +616,7 @@ func testBlockToOneUserUsingTarget(t *testing.T) {
 	}
 }
 
-func testBlockToOneSetOpUserUsingRequestor(t *testing.T) {
+func testBlockToOneSetOpUserUsingBlocked(t *testing.T) {
 	var err error
 
 	ctx := context.Background()
@@ -645,87 +645,35 @@ func testBlockToOneSetOpUserUsingRequestor(t *testing.T) {
 	}
 
 	for i, x := range []*User{&b, &c} {
-		err = a.SetRequestor(ctx, tx, i != 0, x)
+		err = a.SetBlocked(ctx, tx, i != 0, x)
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		if a.R.Requestor != x {
+		if a.R.Blocked != x {
 			t.Error("relationship struct not set to correct value")
 		}
 
-		if x.R.RequestorBlocks[0] != &a {
+		if x.R.BlockedBlocks[0] != &a {
 			t.Error("failed to append to foreign relationship struct")
 		}
-		if !queries.Equal(a.RequestorID, x.ID) {
-			t.Error("foreign key was wrong value", a.RequestorID)
+		if a.BlockedID != x.ID {
+			t.Error("foreign key was wrong value", a.BlockedID)
 		}
 
-		zero := reflect.Zero(reflect.TypeOf(a.RequestorID))
-		reflect.Indirect(reflect.ValueOf(&a.RequestorID)).Set(zero)
+		zero := reflect.Zero(reflect.TypeOf(a.BlockedID))
+		reflect.Indirect(reflect.ValueOf(&a.BlockedID)).Set(zero)
 
 		if err = a.Reload(ctx, tx); err != nil {
 			t.Fatal("failed to reload", err)
 		}
 
-		if !queries.Equal(a.RequestorID, x.ID) {
-			t.Error("foreign key was wrong value", a.RequestorID, x.ID)
+		if a.BlockedID != x.ID {
+			t.Error("foreign key was wrong value", a.BlockedID, x.ID)
 		}
 	}
 }
-
-func testBlockToOneRemoveOpUserUsingRequestor(t *testing.T) {
-	var err error
-
-	ctx := context.Background()
-	tx := MustTx(boil.BeginTx(ctx, nil))
-	defer func() { _ = tx.Rollback() }()
-
-	var a Block
-	var b User
-
-	seed := randomize.NewSeed()
-	if err = randomize.Struct(seed, &a, blockDBTypes, false, strmangle.SetComplement(blockPrimaryKeyColumns, blockColumnsWithoutDefault)...); err != nil {
-		t.Fatal(err)
-	}
-	if err = randomize.Struct(seed, &b, userDBTypes, false, strmangle.SetComplement(userPrimaryKeyColumns, userColumnsWithoutDefault)...); err != nil {
-		t.Fatal(err)
-	}
-
-	if err = a.Insert(ctx, tx, boil.Infer()); err != nil {
-		t.Fatal(err)
-	}
-
-	if err = a.SetRequestor(ctx, tx, true, &b); err != nil {
-		t.Fatal(err)
-	}
-
-	if err = a.RemoveRequestor(ctx, tx, &b); err != nil {
-		t.Error("failed to remove relationship")
-	}
-
-	count, err := a.Requestor().Count(ctx, tx)
-	if err != nil {
-		t.Error(err)
-	}
-	if count != 0 {
-		t.Error("want no relationships remaining")
-	}
-
-	if a.R.Requestor != nil {
-		t.Error("R struct entry should be nil")
-	}
-
-	if !queries.IsValuerNil(a.RequestorID) {
-		t.Error("foreign key value should be nil")
-	}
-
-	if len(b.R.RequestorBlocks) != 0 {
-		t.Error("failed to remove a from b's relationships")
-	}
-}
-
-func testBlockToOneSetOpUserUsingTarget(t *testing.T) {
+func testBlockToOneSetOpUserUsingBlocker(t *testing.T) {
 	var err error
 
 	ctx := context.Background()
@@ -754,83 +702,32 @@ func testBlockToOneSetOpUserUsingTarget(t *testing.T) {
 	}
 
 	for i, x := range []*User{&b, &c} {
-		err = a.SetTarget(ctx, tx, i != 0, x)
+		err = a.SetBlocker(ctx, tx, i != 0, x)
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		if a.R.Target != x {
+		if a.R.Blocker != x {
 			t.Error("relationship struct not set to correct value")
 		}
 
-		if x.R.TargetBlocks[0] != &a {
+		if x.R.BlockerBlocks[0] != &a {
 			t.Error("failed to append to foreign relationship struct")
 		}
-		if !queries.Equal(a.TargetID, x.ID) {
-			t.Error("foreign key was wrong value", a.TargetID)
+		if a.BlockerID != x.ID {
+			t.Error("foreign key was wrong value", a.BlockerID)
 		}
 
-		zero := reflect.Zero(reflect.TypeOf(a.TargetID))
-		reflect.Indirect(reflect.ValueOf(&a.TargetID)).Set(zero)
+		zero := reflect.Zero(reflect.TypeOf(a.BlockerID))
+		reflect.Indirect(reflect.ValueOf(&a.BlockerID)).Set(zero)
 
 		if err = a.Reload(ctx, tx); err != nil {
 			t.Fatal("failed to reload", err)
 		}
 
-		if !queries.Equal(a.TargetID, x.ID) {
-			t.Error("foreign key was wrong value", a.TargetID, x.ID)
+		if a.BlockerID != x.ID {
+			t.Error("foreign key was wrong value", a.BlockerID, x.ID)
 		}
-	}
-}
-
-func testBlockToOneRemoveOpUserUsingTarget(t *testing.T) {
-	var err error
-
-	ctx := context.Background()
-	tx := MustTx(boil.BeginTx(ctx, nil))
-	defer func() { _ = tx.Rollback() }()
-
-	var a Block
-	var b User
-
-	seed := randomize.NewSeed()
-	if err = randomize.Struct(seed, &a, blockDBTypes, false, strmangle.SetComplement(blockPrimaryKeyColumns, blockColumnsWithoutDefault)...); err != nil {
-		t.Fatal(err)
-	}
-	if err = randomize.Struct(seed, &b, userDBTypes, false, strmangle.SetComplement(userPrimaryKeyColumns, userColumnsWithoutDefault)...); err != nil {
-		t.Fatal(err)
-	}
-
-	if err = a.Insert(ctx, tx, boil.Infer()); err != nil {
-		t.Fatal(err)
-	}
-
-	if err = a.SetTarget(ctx, tx, true, &b); err != nil {
-		t.Fatal(err)
-	}
-
-	if err = a.RemoveTarget(ctx, tx, &b); err != nil {
-		t.Error("failed to remove relationship")
-	}
-
-	count, err := a.Target().Count(ctx, tx)
-	if err != nil {
-		t.Error(err)
-	}
-	if count != 0 {
-		t.Error("want no relationships remaining")
-	}
-
-	if a.R.Target != nil {
-		t.Error("R struct entry should be nil")
-	}
-
-	if !queries.IsValuerNil(a.TargetID) {
-		t.Error("foreign key value should be nil")
-	}
-
-	if len(b.R.TargetBlocks) != 0 {
-		t.Error("failed to remove a from b's relationships")
 	}
 }
 
@@ -908,7 +805,7 @@ func testBlocksSelect(t *testing.T) {
 }
 
 var (
-	blockDBTypes = map[string]string{`ID`: `integer`, `RequestorID`: `integer`, `TargetID`: `integer`}
+	blockDBTypes = map[string]string{`ID`: `integer`, `BlockerID`: `integer`, `BlockedID`: `integer`}
 	_            = bytes.MinRead
 )
 

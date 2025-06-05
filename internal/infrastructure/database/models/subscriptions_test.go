@@ -494,7 +494,7 @@ func testSubscriptionsInsertWhitelist(t *testing.T) {
 	}
 }
 
-func testSubscriptionToOneUserUsingRequestor(t *testing.T) {
+func testSubscriptionToOneUserUsingSubscriber(t *testing.T) {
 	ctx := context.Background()
 	tx := MustTx(boil.BeginTx(ctx, nil))
 	defer func() { _ = tx.Rollback() }()
@@ -503,7 +503,7 @@ func testSubscriptionToOneUserUsingRequestor(t *testing.T) {
 	var foreign User
 
 	seed := randomize.NewSeed()
-	if err := randomize.Struct(seed, &local, subscriptionDBTypes, true, subscriptionColumnsWithDefault...); err != nil {
+	if err := randomize.Struct(seed, &local, subscriptionDBTypes, false, subscriptionColumnsWithDefault...); err != nil {
 		t.Errorf("Unable to randomize Subscription struct: %s", err)
 	}
 	if err := randomize.Struct(seed, &foreign, userDBTypes, false, userColumnsWithDefault...); err != nil {
@@ -514,17 +514,17 @@ func testSubscriptionToOneUserUsingRequestor(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	queries.Assign(&local.RequestorID, foreign.ID)
+	local.SubscriberID = foreign.ID
 	if err := local.Insert(ctx, tx, boil.Infer()); err != nil {
 		t.Fatal(err)
 	}
 
-	check, err := local.Requestor().One(ctx, tx)
+	check, err := local.Subscriber().One(ctx, tx)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if !queries.Equal(check.ID, foreign.ID) {
+	if check.ID != foreign.ID {
 		t.Errorf("want: %v, got %v", foreign.ID, check.ID)
 	}
 
@@ -535,18 +535,18 @@ func testSubscriptionToOneUserUsingRequestor(t *testing.T) {
 	})
 
 	slice := SubscriptionSlice{&local}
-	if err = local.L.LoadRequestor(ctx, tx, false, (*[]*Subscription)(&slice), nil); err != nil {
+	if err = local.L.LoadSubscriber(ctx, tx, false, (*[]*Subscription)(&slice), nil); err != nil {
 		t.Fatal(err)
 	}
-	if local.R.Requestor == nil {
+	if local.R.Subscriber == nil {
 		t.Error("struct should have been eager loaded")
 	}
 
-	local.R.Requestor = nil
-	if err = local.L.LoadRequestor(ctx, tx, true, &local, nil); err != nil {
+	local.R.Subscriber = nil
+	if err = local.L.LoadSubscriber(ctx, tx, true, &local, nil); err != nil {
 		t.Fatal(err)
 	}
-	if local.R.Requestor == nil {
+	if local.R.Subscriber == nil {
 		t.Error("struct should have been eager loaded")
 	}
 
@@ -564,7 +564,7 @@ func testSubscriptionToOneUserUsingTarget(t *testing.T) {
 	var foreign User
 
 	seed := randomize.NewSeed()
-	if err := randomize.Struct(seed, &local, subscriptionDBTypes, true, subscriptionColumnsWithDefault...); err != nil {
+	if err := randomize.Struct(seed, &local, subscriptionDBTypes, false, subscriptionColumnsWithDefault...); err != nil {
 		t.Errorf("Unable to randomize Subscription struct: %s", err)
 	}
 	if err := randomize.Struct(seed, &foreign, userDBTypes, false, userColumnsWithDefault...); err != nil {
@@ -575,7 +575,7 @@ func testSubscriptionToOneUserUsingTarget(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	queries.Assign(&local.TargetID, foreign.ID)
+	local.TargetID = foreign.ID
 	if err := local.Insert(ctx, tx, boil.Infer()); err != nil {
 		t.Fatal(err)
 	}
@@ -585,7 +585,7 @@ func testSubscriptionToOneUserUsingTarget(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if !queries.Equal(check.ID, foreign.ID) {
+	if check.ID != foreign.ID {
 		t.Errorf("want: %v, got %v", foreign.ID, check.ID)
 	}
 
@@ -616,7 +616,7 @@ func testSubscriptionToOneUserUsingTarget(t *testing.T) {
 	}
 }
 
-func testSubscriptionToOneSetOpUserUsingRequestor(t *testing.T) {
+func testSubscriptionToOneSetOpUserUsingSubscriber(t *testing.T) {
 	var err error
 
 	ctx := context.Background()
@@ -645,86 +645,34 @@ func testSubscriptionToOneSetOpUserUsingRequestor(t *testing.T) {
 	}
 
 	for i, x := range []*User{&b, &c} {
-		err = a.SetRequestor(ctx, tx, i != 0, x)
+		err = a.SetSubscriber(ctx, tx, i != 0, x)
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		if a.R.Requestor != x {
+		if a.R.Subscriber != x {
 			t.Error("relationship struct not set to correct value")
 		}
 
-		if x.R.RequestorSubscriptions[0] != &a {
+		if x.R.SubscriberSubscriptions[0] != &a {
 			t.Error("failed to append to foreign relationship struct")
 		}
-		if !queries.Equal(a.RequestorID, x.ID) {
-			t.Error("foreign key was wrong value", a.RequestorID)
+		if a.SubscriberID != x.ID {
+			t.Error("foreign key was wrong value", a.SubscriberID)
 		}
 
-		zero := reflect.Zero(reflect.TypeOf(a.RequestorID))
-		reflect.Indirect(reflect.ValueOf(&a.RequestorID)).Set(zero)
+		zero := reflect.Zero(reflect.TypeOf(a.SubscriberID))
+		reflect.Indirect(reflect.ValueOf(&a.SubscriberID)).Set(zero)
 
 		if err = a.Reload(ctx, tx); err != nil {
 			t.Fatal("failed to reload", err)
 		}
 
-		if !queries.Equal(a.RequestorID, x.ID) {
-			t.Error("foreign key was wrong value", a.RequestorID, x.ID)
+		if a.SubscriberID != x.ID {
+			t.Error("foreign key was wrong value", a.SubscriberID, x.ID)
 		}
 	}
 }
-
-func testSubscriptionToOneRemoveOpUserUsingRequestor(t *testing.T) {
-	var err error
-
-	ctx := context.Background()
-	tx := MustTx(boil.BeginTx(ctx, nil))
-	defer func() { _ = tx.Rollback() }()
-
-	var a Subscription
-	var b User
-
-	seed := randomize.NewSeed()
-	if err = randomize.Struct(seed, &a, subscriptionDBTypes, false, strmangle.SetComplement(subscriptionPrimaryKeyColumns, subscriptionColumnsWithoutDefault)...); err != nil {
-		t.Fatal(err)
-	}
-	if err = randomize.Struct(seed, &b, userDBTypes, false, strmangle.SetComplement(userPrimaryKeyColumns, userColumnsWithoutDefault)...); err != nil {
-		t.Fatal(err)
-	}
-
-	if err = a.Insert(ctx, tx, boil.Infer()); err != nil {
-		t.Fatal(err)
-	}
-
-	if err = a.SetRequestor(ctx, tx, true, &b); err != nil {
-		t.Fatal(err)
-	}
-
-	if err = a.RemoveRequestor(ctx, tx, &b); err != nil {
-		t.Error("failed to remove relationship")
-	}
-
-	count, err := a.Requestor().Count(ctx, tx)
-	if err != nil {
-		t.Error(err)
-	}
-	if count != 0 {
-		t.Error("want no relationships remaining")
-	}
-
-	if a.R.Requestor != nil {
-		t.Error("R struct entry should be nil")
-	}
-
-	if !queries.IsValuerNil(a.RequestorID) {
-		t.Error("foreign key value should be nil")
-	}
-
-	if len(b.R.RequestorSubscriptions) != 0 {
-		t.Error("failed to remove a from b's relationships")
-	}
-}
-
 func testSubscriptionToOneSetOpUserUsingTarget(t *testing.T) {
 	var err error
 
@@ -766,7 +714,7 @@ func testSubscriptionToOneSetOpUserUsingTarget(t *testing.T) {
 		if x.R.TargetSubscriptions[0] != &a {
 			t.Error("failed to append to foreign relationship struct")
 		}
-		if !queries.Equal(a.TargetID, x.ID) {
+		if a.TargetID != x.ID {
 			t.Error("foreign key was wrong value", a.TargetID)
 		}
 
@@ -777,60 +725,9 @@ func testSubscriptionToOneSetOpUserUsingTarget(t *testing.T) {
 			t.Fatal("failed to reload", err)
 		}
 
-		if !queries.Equal(a.TargetID, x.ID) {
+		if a.TargetID != x.ID {
 			t.Error("foreign key was wrong value", a.TargetID, x.ID)
 		}
-	}
-}
-
-func testSubscriptionToOneRemoveOpUserUsingTarget(t *testing.T) {
-	var err error
-
-	ctx := context.Background()
-	tx := MustTx(boil.BeginTx(ctx, nil))
-	defer func() { _ = tx.Rollback() }()
-
-	var a Subscription
-	var b User
-
-	seed := randomize.NewSeed()
-	if err = randomize.Struct(seed, &a, subscriptionDBTypes, false, strmangle.SetComplement(subscriptionPrimaryKeyColumns, subscriptionColumnsWithoutDefault)...); err != nil {
-		t.Fatal(err)
-	}
-	if err = randomize.Struct(seed, &b, userDBTypes, false, strmangle.SetComplement(userPrimaryKeyColumns, userColumnsWithoutDefault)...); err != nil {
-		t.Fatal(err)
-	}
-
-	if err = a.Insert(ctx, tx, boil.Infer()); err != nil {
-		t.Fatal(err)
-	}
-
-	if err = a.SetTarget(ctx, tx, true, &b); err != nil {
-		t.Fatal(err)
-	}
-
-	if err = a.RemoveTarget(ctx, tx, &b); err != nil {
-		t.Error("failed to remove relationship")
-	}
-
-	count, err := a.Target().Count(ctx, tx)
-	if err != nil {
-		t.Error(err)
-	}
-	if count != 0 {
-		t.Error("want no relationships remaining")
-	}
-
-	if a.R.Target != nil {
-		t.Error("R struct entry should be nil")
-	}
-
-	if !queries.IsValuerNil(a.TargetID) {
-		t.Error("foreign key value should be nil")
-	}
-
-	if len(b.R.TargetSubscriptions) != 0 {
-		t.Error("failed to remove a from b's relationships")
 	}
 }
 
@@ -908,7 +805,7 @@ func testSubscriptionsSelect(t *testing.T) {
 }
 
 var (
-	subscriptionDBTypes = map[string]string{`ID`: `integer`, `RequestorID`: `integer`, `TargetID`: `integer`}
+	subscriptionDBTypes = map[string]string{`ID`: `integer`, `SubscriberID`: `integer`, `TargetID`: `integer`}
 	_                   = bytes.MinRead
 )
 

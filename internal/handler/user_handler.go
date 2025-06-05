@@ -25,7 +25,7 @@ type CreateFriendshipRequest struct {
 func (h *UserHandler) CreateFriendships(c *gin.Context) {
 	var req CreateFriendshipRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
 		return
 	}
 
@@ -33,7 +33,7 @@ func (h *UserHandler) CreateFriendships(c *gin.Context) {
 
 	if len(req.Friends) != 2 {
 		//todo: util method
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid body"}) //todo: use utils to handle
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"}) //todo: use utils to handle
 		return
 	}
 

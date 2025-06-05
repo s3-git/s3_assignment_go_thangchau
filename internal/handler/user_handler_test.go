@@ -59,7 +59,7 @@ func TestCreateFriendships(t *testing.T) {
 				return errors.New("invalid body")
 			},
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   `{"error":"invalid body"}`,
+			expectedBody:   `{"error":"invalid request"}`,
 		},
 		{
 			name: "internal server error",
@@ -75,31 +75,35 @@ func TestCreateFriendships(t *testing.T) {
 			body:           `{"friends": [}`,
 			mockFunc:       nil,
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   `"error"`,
+			expectedBody:   `{"error":"invalid request"}`,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var mUserController interfaces.UserControllerInterface
+			var mockController interfaces.UserControllerInterface
 			if tt.mockFunc != nil {
-				mUserController = &mockUserController{createFriendshipsFunc: tt.mockFunc}
+				mockController = &mockUserController{createFriendshipsFunc: tt.mockFunc}
 			} else {
-				mUserController = &mockUserController{}
+				mockController = &mockUserController{}
 			}
-			handler := NewUserHandler(mUserController)
 
-			router := gin.Default()
+			handler := NewUserHandler(mockController)
+
+			router := gin.New()
 			router.POST("/friendships", handler.CreateFriendships)
 
-			req, _ := http.NewRequest(http.MethodPost, "/friendships", bytes.NewBuffer([]byte(tt.body)))
+			req, err := http.NewRequest(http.MethodPost, "/friendships", bytes.NewBuffer([]byte(tt.body)))
+			if err != nil {
+				t.Fatalf("failed to create request: %v", err)
+			}
 			req.Header.Set("Content-Type", "application/json")
 			w := httptest.NewRecorder()
 
 			router.ServeHTTP(w, req)
 
 			assert.Equal(t, tt.expectedStatus, w.Code)
-			assert.Contains(t, w.Body.String(), tt.expectedBody)
+			assert.JSONEq(t, tt.expectedBody, w.Body.String())
 		})
 	}
 }

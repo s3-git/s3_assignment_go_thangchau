@@ -21,24 +21,24 @@ var (
 	_ = queries.Equal
 )
 
-func testFriendships(t *testing.T) {
+func testFriends(t *testing.T) {
 	t.Parallel()
 
-	query := Friendships()
+	query := Friends()
 
 	if query.Query == nil {
 		t.Error("expected a query, got nothing")
 	}
 }
 
-func testFriendshipsDelete(t *testing.T) {
+func testFriendsDelete(t *testing.T) {
 	t.Parallel()
 
 	seed := randomize.NewSeed()
 	var err error
-	o := &Friendship{}
-	if err = randomize.Struct(seed, o, friendshipDBTypes, true, friendshipColumnsWithDefault...); err != nil {
-		t.Errorf("Unable to randomize Friendship struct: %s", err)
+	o := &Friend{}
+	if err = randomize.Struct(seed, o, friendDBTypes, true, friendColumnsWithDefault...); err != nil {
+		t.Errorf("Unable to randomize Friend struct: %s", err)
 	}
 
 	ctx := context.Background()
@@ -54,7 +54,7 @@ func testFriendshipsDelete(t *testing.T) {
 		t.Error("should only have deleted one row, but affected:", rowsAff)
 	}
 
-	count, err := Friendships().Count(ctx, tx)
+	count, err := Friends().Count(ctx, tx)
 	if err != nil {
 		t.Error(err)
 	}
@@ -64,14 +64,14 @@ func testFriendshipsDelete(t *testing.T) {
 	}
 }
 
-func testFriendshipsQueryDeleteAll(t *testing.T) {
+func testFriendsQueryDeleteAll(t *testing.T) {
 	t.Parallel()
 
 	seed := randomize.NewSeed()
 	var err error
-	o := &Friendship{}
-	if err = randomize.Struct(seed, o, friendshipDBTypes, true, friendshipColumnsWithDefault...); err != nil {
-		t.Errorf("Unable to randomize Friendship struct: %s", err)
+	o := &Friend{}
+	if err = randomize.Struct(seed, o, friendDBTypes, true, friendColumnsWithDefault...); err != nil {
+		t.Errorf("Unable to randomize Friend struct: %s", err)
 	}
 
 	ctx := context.Background()
@@ -81,13 +81,13 @@ func testFriendshipsQueryDeleteAll(t *testing.T) {
 		t.Error(err)
 	}
 
-	if rowsAff, err := Friendships().DeleteAll(ctx, tx); err != nil {
+	if rowsAff, err := Friends().DeleteAll(ctx, tx); err != nil {
 		t.Error(err)
 	} else if rowsAff != 1 {
 		t.Error("should only have deleted one row, but affected:", rowsAff)
 	}
 
-	count, err := Friendships().Count(ctx, tx)
+	count, err := Friends().Count(ctx, tx)
 	if err != nil {
 		t.Error(err)
 	}
@@ -97,14 +97,14 @@ func testFriendshipsQueryDeleteAll(t *testing.T) {
 	}
 }
 
-func testFriendshipsSliceDeleteAll(t *testing.T) {
+func testFriendsSliceDeleteAll(t *testing.T) {
 	t.Parallel()
 
 	seed := randomize.NewSeed()
 	var err error
-	o := &Friendship{}
-	if err = randomize.Struct(seed, o, friendshipDBTypes, true, friendshipColumnsWithDefault...); err != nil {
-		t.Errorf("Unable to randomize Friendship struct: %s", err)
+	o := &Friend{}
+	if err = randomize.Struct(seed, o, friendDBTypes, true, friendColumnsWithDefault...); err != nil {
+		t.Errorf("Unable to randomize Friend struct: %s", err)
 	}
 
 	ctx := context.Background()
@@ -114,7 +114,7 @@ func testFriendshipsSliceDeleteAll(t *testing.T) {
 		t.Error(err)
 	}
 
-	slice := FriendshipSlice{o}
+	slice := FriendSlice{o}
 
 	if rowsAff, err := slice.DeleteAll(ctx, tx); err != nil {
 		t.Error(err)
@@ -122,7 +122,7 @@ func testFriendshipsSliceDeleteAll(t *testing.T) {
 		t.Error("should only have deleted one row, but affected:", rowsAff)
 	}
 
-	count, err := Friendships().Count(ctx, tx)
+	count, err := Friends().Count(ctx, tx)
 	if err != nil {
 		t.Error(err)
 	}
@@ -132,14 +132,14 @@ func testFriendshipsSliceDeleteAll(t *testing.T) {
 	}
 }
 
-func testFriendshipsExists(t *testing.T) {
+func testFriendsExists(t *testing.T) {
 	t.Parallel()
 
 	seed := randomize.NewSeed()
 	var err error
-	o := &Friendship{}
-	if err = randomize.Struct(seed, o, friendshipDBTypes, true, friendshipColumnsWithDefault...); err != nil {
-		t.Errorf("Unable to randomize Friendship struct: %s", err)
+	o := &Friend{}
+	if err = randomize.Struct(seed, o, friendDBTypes, true, friendColumnsWithDefault...); err != nil {
+		t.Errorf("Unable to randomize Friend struct: %s", err)
 	}
 
 	ctx := context.Background()
@@ -149,23 +149,23 @@ func testFriendshipsExists(t *testing.T) {
 		t.Error(err)
 	}
 
-	e, err := FriendshipExists(ctx, tx, o.ID)
+	e, err := FriendExists(ctx, tx, o.ID)
 	if err != nil {
-		t.Errorf("Unable to check if Friendship exists: %s", err)
+		t.Errorf("Unable to check if Friend exists: %s", err)
 	}
 	if !e {
-		t.Errorf("Expected FriendshipExists to return true, but got false.")
+		t.Errorf("Expected FriendExists to return true, but got false.")
 	}
 }
 
-func testFriendshipsFind(t *testing.T) {
+func testFriendsFind(t *testing.T) {
 	t.Parallel()
 
 	seed := randomize.NewSeed()
 	var err error
-	o := &Friendship{}
-	if err = randomize.Struct(seed, o, friendshipDBTypes, true, friendshipColumnsWithDefault...); err != nil {
-		t.Errorf("Unable to randomize Friendship struct: %s", err)
+	o := &Friend{}
+	if err = randomize.Struct(seed, o, friendDBTypes, true, friendColumnsWithDefault...); err != nil {
+		t.Errorf("Unable to randomize Friend struct: %s", err)
 	}
 
 	ctx := context.Background()
@@ -175,24 +175,24 @@ func testFriendshipsFind(t *testing.T) {
 		t.Error(err)
 	}
 
-	friendshipFound, err := FindFriendship(ctx, tx, o.ID)
+	friendFound, err := FindFriend(ctx, tx, o.ID)
 	if err != nil {
 		t.Error(err)
 	}
 
-	if friendshipFound == nil {
+	if friendFound == nil {
 		t.Error("want a record, got nil")
 	}
 }
 
-func testFriendshipsBind(t *testing.T) {
+func testFriendsBind(t *testing.T) {
 	t.Parallel()
 
 	seed := randomize.NewSeed()
 	var err error
-	o := &Friendship{}
-	if err = randomize.Struct(seed, o, friendshipDBTypes, true, friendshipColumnsWithDefault...); err != nil {
-		t.Errorf("Unable to randomize Friendship struct: %s", err)
+	o := &Friend{}
+	if err = randomize.Struct(seed, o, friendDBTypes, true, friendColumnsWithDefault...); err != nil {
+		t.Errorf("Unable to randomize Friend struct: %s", err)
 	}
 
 	ctx := context.Background()
@@ -202,19 +202,19 @@ func testFriendshipsBind(t *testing.T) {
 		t.Error(err)
 	}
 
-	if err = Friendships().Bind(ctx, tx, o); err != nil {
+	if err = Friends().Bind(ctx, tx, o); err != nil {
 		t.Error(err)
 	}
 }
 
-func testFriendshipsOne(t *testing.T) {
+func testFriendsOne(t *testing.T) {
 	t.Parallel()
 
 	seed := randomize.NewSeed()
 	var err error
-	o := &Friendship{}
-	if err = randomize.Struct(seed, o, friendshipDBTypes, true, friendshipColumnsWithDefault...); err != nil {
-		t.Errorf("Unable to randomize Friendship struct: %s", err)
+	o := &Friend{}
+	if err = randomize.Struct(seed, o, friendDBTypes, true, friendColumnsWithDefault...); err != nil {
+		t.Errorf("Unable to randomize Friend struct: %s", err)
 	}
 
 	ctx := context.Background()
@@ -224,38 +224,38 @@ func testFriendshipsOne(t *testing.T) {
 		t.Error(err)
 	}
 
-	if x, err := Friendships().One(ctx, tx); err != nil {
+	if x, err := Friends().One(ctx, tx); err != nil {
 		t.Error(err)
 	} else if x == nil {
 		t.Error("expected to get a non nil record")
 	}
 }
 
-func testFriendshipsAll(t *testing.T) {
+func testFriendsAll(t *testing.T) {
 	t.Parallel()
 
 	seed := randomize.NewSeed()
 	var err error
-	friendshipOne := &Friendship{}
-	friendshipTwo := &Friendship{}
-	if err = randomize.Struct(seed, friendshipOne, friendshipDBTypes, false, friendshipColumnsWithDefault...); err != nil {
-		t.Errorf("Unable to randomize Friendship struct: %s", err)
+	friendOne := &Friend{}
+	friendTwo := &Friend{}
+	if err = randomize.Struct(seed, friendOne, friendDBTypes, false, friendColumnsWithDefault...); err != nil {
+		t.Errorf("Unable to randomize Friend struct: %s", err)
 	}
-	if err = randomize.Struct(seed, friendshipTwo, friendshipDBTypes, false, friendshipColumnsWithDefault...); err != nil {
-		t.Errorf("Unable to randomize Friendship struct: %s", err)
+	if err = randomize.Struct(seed, friendTwo, friendDBTypes, false, friendColumnsWithDefault...); err != nil {
+		t.Errorf("Unable to randomize Friend struct: %s", err)
 	}
 
 	ctx := context.Background()
 	tx := MustTx(boil.BeginTx(ctx, nil))
 	defer func() { _ = tx.Rollback() }()
-	if err = friendshipOne.Insert(ctx, tx, boil.Infer()); err != nil {
+	if err = friendOne.Insert(ctx, tx, boil.Infer()); err != nil {
 		t.Error(err)
 	}
-	if err = friendshipTwo.Insert(ctx, tx, boil.Infer()); err != nil {
+	if err = friendTwo.Insert(ctx, tx, boil.Infer()); err != nil {
 		t.Error(err)
 	}
 
-	slice, err := Friendships().All(ctx, tx)
+	slice, err := Friends().All(ctx, tx)
 	if err != nil {
 		t.Error(err)
 	}
@@ -265,31 +265,31 @@ func testFriendshipsAll(t *testing.T) {
 	}
 }
 
-func testFriendshipsCount(t *testing.T) {
+func testFriendsCount(t *testing.T) {
 	t.Parallel()
 
 	var err error
 	seed := randomize.NewSeed()
-	friendshipOne := &Friendship{}
-	friendshipTwo := &Friendship{}
-	if err = randomize.Struct(seed, friendshipOne, friendshipDBTypes, false, friendshipColumnsWithDefault...); err != nil {
-		t.Errorf("Unable to randomize Friendship struct: %s", err)
+	friendOne := &Friend{}
+	friendTwo := &Friend{}
+	if err = randomize.Struct(seed, friendOne, friendDBTypes, false, friendColumnsWithDefault...); err != nil {
+		t.Errorf("Unable to randomize Friend struct: %s", err)
 	}
-	if err = randomize.Struct(seed, friendshipTwo, friendshipDBTypes, false, friendshipColumnsWithDefault...); err != nil {
-		t.Errorf("Unable to randomize Friendship struct: %s", err)
+	if err = randomize.Struct(seed, friendTwo, friendDBTypes, false, friendColumnsWithDefault...); err != nil {
+		t.Errorf("Unable to randomize Friend struct: %s", err)
 	}
 
 	ctx := context.Background()
 	tx := MustTx(boil.BeginTx(ctx, nil))
 	defer func() { _ = tx.Rollback() }()
-	if err = friendshipOne.Insert(ctx, tx, boil.Infer()); err != nil {
+	if err = friendOne.Insert(ctx, tx, boil.Infer()); err != nil {
 		t.Error(err)
 	}
-	if err = friendshipTwo.Insert(ctx, tx, boil.Infer()); err != nil {
+	if err = friendTwo.Insert(ctx, tx, boil.Infer()); err != nil {
 		t.Error(err)
 	}
 
-	count, err := Friendships().Count(ctx, tx)
+	count, err := Friends().Count(ctx, tx)
 	if err != nil {
 		t.Error(err)
 	}
@@ -299,155 +299,155 @@ func testFriendshipsCount(t *testing.T) {
 	}
 }
 
-func friendshipBeforeInsertHook(ctx context.Context, e boil.ContextExecutor, o *Friendship) error {
-	*o = Friendship{}
+func friendBeforeInsertHook(ctx context.Context, e boil.ContextExecutor, o *Friend) error {
+	*o = Friend{}
 	return nil
 }
 
-func friendshipAfterInsertHook(ctx context.Context, e boil.ContextExecutor, o *Friendship) error {
-	*o = Friendship{}
+func friendAfterInsertHook(ctx context.Context, e boil.ContextExecutor, o *Friend) error {
+	*o = Friend{}
 	return nil
 }
 
-func friendshipAfterSelectHook(ctx context.Context, e boil.ContextExecutor, o *Friendship) error {
-	*o = Friendship{}
+func friendAfterSelectHook(ctx context.Context, e boil.ContextExecutor, o *Friend) error {
+	*o = Friend{}
 	return nil
 }
 
-func friendshipBeforeUpdateHook(ctx context.Context, e boil.ContextExecutor, o *Friendship) error {
-	*o = Friendship{}
+func friendBeforeUpdateHook(ctx context.Context, e boil.ContextExecutor, o *Friend) error {
+	*o = Friend{}
 	return nil
 }
 
-func friendshipAfterUpdateHook(ctx context.Context, e boil.ContextExecutor, o *Friendship) error {
-	*o = Friendship{}
+func friendAfterUpdateHook(ctx context.Context, e boil.ContextExecutor, o *Friend) error {
+	*o = Friend{}
 	return nil
 }
 
-func friendshipBeforeDeleteHook(ctx context.Context, e boil.ContextExecutor, o *Friendship) error {
-	*o = Friendship{}
+func friendBeforeDeleteHook(ctx context.Context, e boil.ContextExecutor, o *Friend) error {
+	*o = Friend{}
 	return nil
 }
 
-func friendshipAfterDeleteHook(ctx context.Context, e boil.ContextExecutor, o *Friendship) error {
-	*o = Friendship{}
+func friendAfterDeleteHook(ctx context.Context, e boil.ContextExecutor, o *Friend) error {
+	*o = Friend{}
 	return nil
 }
 
-func friendshipBeforeUpsertHook(ctx context.Context, e boil.ContextExecutor, o *Friendship) error {
-	*o = Friendship{}
+func friendBeforeUpsertHook(ctx context.Context, e boil.ContextExecutor, o *Friend) error {
+	*o = Friend{}
 	return nil
 }
 
-func friendshipAfterUpsertHook(ctx context.Context, e boil.ContextExecutor, o *Friendship) error {
-	*o = Friendship{}
+func friendAfterUpsertHook(ctx context.Context, e boil.ContextExecutor, o *Friend) error {
+	*o = Friend{}
 	return nil
 }
 
-func testFriendshipsHooks(t *testing.T) {
+func testFriendsHooks(t *testing.T) {
 	t.Parallel()
 
 	var err error
 
 	ctx := context.Background()
-	empty := &Friendship{}
-	o := &Friendship{}
+	empty := &Friend{}
+	o := &Friend{}
 
 	seed := randomize.NewSeed()
-	if err = randomize.Struct(seed, o, friendshipDBTypes, false); err != nil {
-		t.Errorf("Unable to randomize Friendship object: %s", err)
+	if err = randomize.Struct(seed, o, friendDBTypes, false); err != nil {
+		t.Errorf("Unable to randomize Friend object: %s", err)
 	}
 
-	AddFriendshipHook(boil.BeforeInsertHook, friendshipBeforeInsertHook)
+	AddFriendHook(boil.BeforeInsertHook, friendBeforeInsertHook)
 	if err = o.doBeforeInsertHooks(ctx, nil); err != nil {
 		t.Errorf("Unable to execute doBeforeInsertHooks: %s", err)
 	}
 	if !reflect.DeepEqual(o, empty) {
 		t.Errorf("Expected BeforeInsertHook function to empty object, but got: %#v", o)
 	}
-	friendshipBeforeInsertHooks = []FriendshipHook{}
+	friendBeforeInsertHooks = []FriendHook{}
 
-	AddFriendshipHook(boil.AfterInsertHook, friendshipAfterInsertHook)
+	AddFriendHook(boil.AfterInsertHook, friendAfterInsertHook)
 	if err = o.doAfterInsertHooks(ctx, nil); err != nil {
 		t.Errorf("Unable to execute doAfterInsertHooks: %s", err)
 	}
 	if !reflect.DeepEqual(o, empty) {
 		t.Errorf("Expected AfterInsertHook function to empty object, but got: %#v", o)
 	}
-	friendshipAfterInsertHooks = []FriendshipHook{}
+	friendAfterInsertHooks = []FriendHook{}
 
-	AddFriendshipHook(boil.AfterSelectHook, friendshipAfterSelectHook)
+	AddFriendHook(boil.AfterSelectHook, friendAfterSelectHook)
 	if err = o.doAfterSelectHooks(ctx, nil); err != nil {
 		t.Errorf("Unable to execute doAfterSelectHooks: %s", err)
 	}
 	if !reflect.DeepEqual(o, empty) {
 		t.Errorf("Expected AfterSelectHook function to empty object, but got: %#v", o)
 	}
-	friendshipAfterSelectHooks = []FriendshipHook{}
+	friendAfterSelectHooks = []FriendHook{}
 
-	AddFriendshipHook(boil.BeforeUpdateHook, friendshipBeforeUpdateHook)
+	AddFriendHook(boil.BeforeUpdateHook, friendBeforeUpdateHook)
 	if err = o.doBeforeUpdateHooks(ctx, nil); err != nil {
 		t.Errorf("Unable to execute doBeforeUpdateHooks: %s", err)
 	}
 	if !reflect.DeepEqual(o, empty) {
 		t.Errorf("Expected BeforeUpdateHook function to empty object, but got: %#v", o)
 	}
-	friendshipBeforeUpdateHooks = []FriendshipHook{}
+	friendBeforeUpdateHooks = []FriendHook{}
 
-	AddFriendshipHook(boil.AfterUpdateHook, friendshipAfterUpdateHook)
+	AddFriendHook(boil.AfterUpdateHook, friendAfterUpdateHook)
 	if err = o.doAfterUpdateHooks(ctx, nil); err != nil {
 		t.Errorf("Unable to execute doAfterUpdateHooks: %s", err)
 	}
 	if !reflect.DeepEqual(o, empty) {
 		t.Errorf("Expected AfterUpdateHook function to empty object, but got: %#v", o)
 	}
-	friendshipAfterUpdateHooks = []FriendshipHook{}
+	friendAfterUpdateHooks = []FriendHook{}
 
-	AddFriendshipHook(boil.BeforeDeleteHook, friendshipBeforeDeleteHook)
+	AddFriendHook(boil.BeforeDeleteHook, friendBeforeDeleteHook)
 	if err = o.doBeforeDeleteHooks(ctx, nil); err != nil {
 		t.Errorf("Unable to execute doBeforeDeleteHooks: %s", err)
 	}
 	if !reflect.DeepEqual(o, empty) {
 		t.Errorf("Expected BeforeDeleteHook function to empty object, but got: %#v", o)
 	}
-	friendshipBeforeDeleteHooks = []FriendshipHook{}
+	friendBeforeDeleteHooks = []FriendHook{}
 
-	AddFriendshipHook(boil.AfterDeleteHook, friendshipAfterDeleteHook)
+	AddFriendHook(boil.AfterDeleteHook, friendAfterDeleteHook)
 	if err = o.doAfterDeleteHooks(ctx, nil); err != nil {
 		t.Errorf("Unable to execute doAfterDeleteHooks: %s", err)
 	}
 	if !reflect.DeepEqual(o, empty) {
 		t.Errorf("Expected AfterDeleteHook function to empty object, but got: %#v", o)
 	}
-	friendshipAfterDeleteHooks = []FriendshipHook{}
+	friendAfterDeleteHooks = []FriendHook{}
 
-	AddFriendshipHook(boil.BeforeUpsertHook, friendshipBeforeUpsertHook)
+	AddFriendHook(boil.BeforeUpsertHook, friendBeforeUpsertHook)
 	if err = o.doBeforeUpsertHooks(ctx, nil); err != nil {
 		t.Errorf("Unable to execute doBeforeUpsertHooks: %s", err)
 	}
 	if !reflect.DeepEqual(o, empty) {
 		t.Errorf("Expected BeforeUpsertHook function to empty object, but got: %#v", o)
 	}
-	friendshipBeforeUpsertHooks = []FriendshipHook{}
+	friendBeforeUpsertHooks = []FriendHook{}
 
-	AddFriendshipHook(boil.AfterUpsertHook, friendshipAfterUpsertHook)
+	AddFriendHook(boil.AfterUpsertHook, friendAfterUpsertHook)
 	if err = o.doAfterUpsertHooks(ctx, nil); err != nil {
 		t.Errorf("Unable to execute doAfterUpsertHooks: %s", err)
 	}
 	if !reflect.DeepEqual(o, empty) {
 		t.Errorf("Expected AfterUpsertHook function to empty object, but got: %#v", o)
 	}
-	friendshipAfterUpsertHooks = []FriendshipHook{}
+	friendAfterUpsertHooks = []FriendHook{}
 }
 
-func testFriendshipsInsert(t *testing.T) {
+func testFriendsInsert(t *testing.T) {
 	t.Parallel()
 
 	seed := randomize.NewSeed()
 	var err error
-	o := &Friendship{}
-	if err = randomize.Struct(seed, o, friendshipDBTypes, true, friendshipColumnsWithDefault...); err != nil {
-		t.Errorf("Unable to randomize Friendship struct: %s", err)
+	o := &Friend{}
+	if err = randomize.Struct(seed, o, friendDBTypes, true, friendColumnsWithDefault...); err != nil {
+		t.Errorf("Unable to randomize Friend struct: %s", err)
 	}
 
 	ctx := context.Background()
@@ -457,7 +457,7 @@ func testFriendshipsInsert(t *testing.T) {
 		t.Error(err)
 	}
 
-	count, err := Friendships().Count(ctx, tx)
+	count, err := Friends().Count(ctx, tx)
 	if err != nil {
 		t.Error(err)
 	}
@@ -467,24 +467,24 @@ func testFriendshipsInsert(t *testing.T) {
 	}
 }
 
-func testFriendshipsInsertWhitelist(t *testing.T) {
+func testFriendsInsertWhitelist(t *testing.T) {
 	t.Parallel()
 
 	seed := randomize.NewSeed()
 	var err error
-	o := &Friendship{}
-	if err = randomize.Struct(seed, o, friendshipDBTypes, true); err != nil {
-		t.Errorf("Unable to randomize Friendship struct: %s", err)
+	o := &Friend{}
+	if err = randomize.Struct(seed, o, friendDBTypes, true); err != nil {
+		t.Errorf("Unable to randomize Friend struct: %s", err)
 	}
 
 	ctx := context.Background()
 	tx := MustTx(boil.BeginTx(ctx, nil))
 	defer func() { _ = tx.Rollback() }()
-	if err = o.Insert(ctx, tx, boil.Whitelist(strmangle.SetMerge(friendshipPrimaryKeyColumns, friendshipColumnsWithoutDefault)...)); err != nil {
+	if err = o.Insert(ctx, tx, boil.Whitelist(strmangle.SetMerge(friendPrimaryKeyColumns, friendColumnsWithoutDefault)...)); err != nil {
 		t.Error(err)
 	}
 
-	count, err := Friendships().Count(ctx, tx)
+	count, err := Friends().Count(ctx, tx)
 	if err != nil {
 		t.Error(err)
 	}
@@ -494,17 +494,17 @@ func testFriendshipsInsertWhitelist(t *testing.T) {
 	}
 }
 
-func testFriendshipToOneUserUsingUser1(t *testing.T) {
+func testFriendToOneUserUsingUser1(t *testing.T) {
 	ctx := context.Background()
 	tx := MustTx(boil.BeginTx(ctx, nil))
 	defer func() { _ = tx.Rollback() }()
 
-	var local Friendship
+	var local Friend
 	var foreign User
 
 	seed := randomize.NewSeed()
-	if err := randomize.Struct(seed, &local, friendshipDBTypes, true, friendshipColumnsWithDefault...); err != nil {
-		t.Errorf("Unable to randomize Friendship struct: %s", err)
+	if err := randomize.Struct(seed, &local, friendDBTypes, false, friendColumnsWithDefault...); err != nil {
+		t.Errorf("Unable to randomize Friend struct: %s", err)
 	}
 	if err := randomize.Struct(seed, &foreign, userDBTypes, false, userColumnsWithDefault...); err != nil {
 		t.Errorf("Unable to randomize User struct: %s", err)
@@ -514,7 +514,7 @@ func testFriendshipToOneUserUsingUser1(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	queries.Assign(&local.User1ID, foreign.ID)
+	local.User1ID = foreign.ID
 	if err := local.Insert(ctx, tx, boil.Infer()); err != nil {
 		t.Fatal(err)
 	}
@@ -524,7 +524,7 @@ func testFriendshipToOneUserUsingUser1(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if !queries.Equal(check.ID, foreign.ID) {
+	if check.ID != foreign.ID {
 		t.Errorf("want: %v, got %v", foreign.ID, check.ID)
 	}
 
@@ -534,8 +534,8 @@ func testFriendshipToOneUserUsingUser1(t *testing.T) {
 		return nil
 	})
 
-	slice := FriendshipSlice{&local}
-	if err = local.L.LoadUser1(ctx, tx, false, (*[]*Friendship)(&slice), nil); err != nil {
+	slice := FriendSlice{&local}
+	if err = local.L.LoadUser1(ctx, tx, false, (*[]*Friend)(&slice), nil); err != nil {
 		t.Fatal(err)
 	}
 	if local.R.User1 == nil {
@@ -555,17 +555,17 @@ func testFriendshipToOneUserUsingUser1(t *testing.T) {
 	}
 }
 
-func testFriendshipToOneUserUsingUser2(t *testing.T) {
+func testFriendToOneUserUsingUser2(t *testing.T) {
 	ctx := context.Background()
 	tx := MustTx(boil.BeginTx(ctx, nil))
 	defer func() { _ = tx.Rollback() }()
 
-	var local Friendship
+	var local Friend
 	var foreign User
 
 	seed := randomize.NewSeed()
-	if err := randomize.Struct(seed, &local, friendshipDBTypes, true, friendshipColumnsWithDefault...); err != nil {
-		t.Errorf("Unable to randomize Friendship struct: %s", err)
+	if err := randomize.Struct(seed, &local, friendDBTypes, false, friendColumnsWithDefault...); err != nil {
+		t.Errorf("Unable to randomize Friend struct: %s", err)
 	}
 	if err := randomize.Struct(seed, &foreign, userDBTypes, false, userColumnsWithDefault...); err != nil {
 		t.Errorf("Unable to randomize User struct: %s", err)
@@ -575,7 +575,7 @@ func testFriendshipToOneUserUsingUser2(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	queries.Assign(&local.User2ID, foreign.ID)
+	local.User2ID = foreign.ID
 	if err := local.Insert(ctx, tx, boil.Infer()); err != nil {
 		t.Fatal(err)
 	}
@@ -585,7 +585,7 @@ func testFriendshipToOneUserUsingUser2(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if !queries.Equal(check.ID, foreign.ID) {
+	if check.ID != foreign.ID {
 		t.Errorf("want: %v, got %v", foreign.ID, check.ID)
 	}
 
@@ -595,8 +595,8 @@ func testFriendshipToOneUserUsingUser2(t *testing.T) {
 		return nil
 	})
 
-	slice := FriendshipSlice{&local}
-	if err = local.L.LoadUser2(ctx, tx, false, (*[]*Friendship)(&slice), nil); err != nil {
+	slice := FriendSlice{&local}
+	if err = local.L.LoadUser2(ctx, tx, false, (*[]*Friend)(&slice), nil); err != nil {
 		t.Fatal(err)
 	}
 	if local.R.User2 == nil {
@@ -616,18 +616,18 @@ func testFriendshipToOneUserUsingUser2(t *testing.T) {
 	}
 }
 
-func testFriendshipToOneSetOpUserUsingUser1(t *testing.T) {
+func testFriendToOneSetOpUserUsingUser1(t *testing.T) {
 	var err error
 
 	ctx := context.Background()
 	tx := MustTx(boil.BeginTx(ctx, nil))
 	defer func() { _ = tx.Rollback() }()
 
-	var a Friendship
+	var a Friend
 	var b, c User
 
 	seed := randomize.NewSeed()
-	if err = randomize.Struct(seed, &a, friendshipDBTypes, false, strmangle.SetComplement(friendshipPrimaryKeyColumns, friendshipColumnsWithoutDefault)...); err != nil {
+	if err = randomize.Struct(seed, &a, friendDBTypes, false, strmangle.SetComplement(friendPrimaryKeyColumns, friendColumnsWithoutDefault)...); err != nil {
 		t.Fatal(err)
 	}
 	if err = randomize.Struct(seed, &b, userDBTypes, false, strmangle.SetComplement(userPrimaryKeyColumns, userColumnsWithoutDefault)...); err != nil {
@@ -654,10 +654,10 @@ func testFriendshipToOneSetOpUserUsingUser1(t *testing.T) {
 			t.Error("relationship struct not set to correct value")
 		}
 
-		if x.R.User1Friendships[0] != &a {
+		if x.R.User1Friends[0] != &a {
 			t.Error("failed to append to foreign relationship struct")
 		}
-		if !queries.Equal(a.User1ID, x.ID) {
+		if a.User1ID != x.ID {
 			t.Error("foreign key was wrong value", a.User1ID)
 		}
 
@@ -668,75 +668,23 @@ func testFriendshipToOneSetOpUserUsingUser1(t *testing.T) {
 			t.Fatal("failed to reload", err)
 		}
 
-		if !queries.Equal(a.User1ID, x.ID) {
+		if a.User1ID != x.ID {
 			t.Error("foreign key was wrong value", a.User1ID, x.ID)
 		}
 	}
 }
-
-func testFriendshipToOneRemoveOpUserUsingUser1(t *testing.T) {
+func testFriendToOneSetOpUserUsingUser2(t *testing.T) {
 	var err error
 
 	ctx := context.Background()
 	tx := MustTx(boil.BeginTx(ctx, nil))
 	defer func() { _ = tx.Rollback() }()
 
-	var a Friendship
-	var b User
-
-	seed := randomize.NewSeed()
-	if err = randomize.Struct(seed, &a, friendshipDBTypes, false, strmangle.SetComplement(friendshipPrimaryKeyColumns, friendshipColumnsWithoutDefault)...); err != nil {
-		t.Fatal(err)
-	}
-	if err = randomize.Struct(seed, &b, userDBTypes, false, strmangle.SetComplement(userPrimaryKeyColumns, userColumnsWithoutDefault)...); err != nil {
-		t.Fatal(err)
-	}
-
-	if err = a.Insert(ctx, tx, boil.Infer()); err != nil {
-		t.Fatal(err)
-	}
-
-	if err = a.SetUser1(ctx, tx, true, &b); err != nil {
-		t.Fatal(err)
-	}
-
-	if err = a.RemoveUser1(ctx, tx, &b); err != nil {
-		t.Error("failed to remove relationship")
-	}
-
-	count, err := a.User1().Count(ctx, tx)
-	if err != nil {
-		t.Error(err)
-	}
-	if count != 0 {
-		t.Error("want no relationships remaining")
-	}
-
-	if a.R.User1 != nil {
-		t.Error("R struct entry should be nil")
-	}
-
-	if !queries.IsValuerNil(a.User1ID) {
-		t.Error("foreign key value should be nil")
-	}
-
-	if len(b.R.User1Friendships) != 0 {
-		t.Error("failed to remove a from b's relationships")
-	}
-}
-
-func testFriendshipToOneSetOpUserUsingUser2(t *testing.T) {
-	var err error
-
-	ctx := context.Background()
-	tx := MustTx(boil.BeginTx(ctx, nil))
-	defer func() { _ = tx.Rollback() }()
-
-	var a Friendship
+	var a Friend
 	var b, c User
 
 	seed := randomize.NewSeed()
-	if err = randomize.Struct(seed, &a, friendshipDBTypes, false, strmangle.SetComplement(friendshipPrimaryKeyColumns, friendshipColumnsWithoutDefault)...); err != nil {
+	if err = randomize.Struct(seed, &a, friendDBTypes, false, strmangle.SetComplement(friendPrimaryKeyColumns, friendColumnsWithoutDefault)...); err != nil {
 		t.Fatal(err)
 	}
 	if err = randomize.Struct(seed, &b, userDBTypes, false, strmangle.SetComplement(userPrimaryKeyColumns, userColumnsWithoutDefault)...); err != nil {
@@ -763,10 +711,10 @@ func testFriendshipToOneSetOpUserUsingUser2(t *testing.T) {
 			t.Error("relationship struct not set to correct value")
 		}
 
-		if x.R.User2Friendships[0] != &a {
+		if x.R.User2Friends[0] != &a {
 			t.Error("failed to append to foreign relationship struct")
 		}
-		if !queries.Equal(a.User2ID, x.ID) {
+		if a.User2ID != x.ID {
 			t.Error("foreign key was wrong value", a.User2ID)
 		}
 
@@ -777,71 +725,20 @@ func testFriendshipToOneSetOpUserUsingUser2(t *testing.T) {
 			t.Fatal("failed to reload", err)
 		}
 
-		if !queries.Equal(a.User2ID, x.ID) {
+		if a.User2ID != x.ID {
 			t.Error("foreign key was wrong value", a.User2ID, x.ID)
 		}
 	}
 }
 
-func testFriendshipToOneRemoveOpUserUsingUser2(t *testing.T) {
-	var err error
-
-	ctx := context.Background()
-	tx := MustTx(boil.BeginTx(ctx, nil))
-	defer func() { _ = tx.Rollback() }()
-
-	var a Friendship
-	var b User
-
-	seed := randomize.NewSeed()
-	if err = randomize.Struct(seed, &a, friendshipDBTypes, false, strmangle.SetComplement(friendshipPrimaryKeyColumns, friendshipColumnsWithoutDefault)...); err != nil {
-		t.Fatal(err)
-	}
-	if err = randomize.Struct(seed, &b, userDBTypes, false, strmangle.SetComplement(userPrimaryKeyColumns, userColumnsWithoutDefault)...); err != nil {
-		t.Fatal(err)
-	}
-
-	if err = a.Insert(ctx, tx, boil.Infer()); err != nil {
-		t.Fatal(err)
-	}
-
-	if err = a.SetUser2(ctx, tx, true, &b); err != nil {
-		t.Fatal(err)
-	}
-
-	if err = a.RemoveUser2(ctx, tx, &b); err != nil {
-		t.Error("failed to remove relationship")
-	}
-
-	count, err := a.User2().Count(ctx, tx)
-	if err != nil {
-		t.Error(err)
-	}
-	if count != 0 {
-		t.Error("want no relationships remaining")
-	}
-
-	if a.R.User2 != nil {
-		t.Error("R struct entry should be nil")
-	}
-
-	if !queries.IsValuerNil(a.User2ID) {
-		t.Error("foreign key value should be nil")
-	}
-
-	if len(b.R.User2Friendships) != 0 {
-		t.Error("failed to remove a from b's relationships")
-	}
-}
-
-func testFriendshipsReload(t *testing.T) {
+func testFriendsReload(t *testing.T) {
 	t.Parallel()
 
 	seed := randomize.NewSeed()
 	var err error
-	o := &Friendship{}
-	if err = randomize.Struct(seed, o, friendshipDBTypes, true, friendshipColumnsWithDefault...); err != nil {
-		t.Errorf("Unable to randomize Friendship struct: %s", err)
+	o := &Friend{}
+	if err = randomize.Struct(seed, o, friendDBTypes, true, friendColumnsWithDefault...); err != nil {
+		t.Errorf("Unable to randomize Friend struct: %s", err)
 	}
 
 	ctx := context.Background()
@@ -856,14 +753,14 @@ func testFriendshipsReload(t *testing.T) {
 	}
 }
 
-func testFriendshipsReloadAll(t *testing.T) {
+func testFriendsReloadAll(t *testing.T) {
 	t.Parallel()
 
 	seed := randomize.NewSeed()
 	var err error
-	o := &Friendship{}
-	if err = randomize.Struct(seed, o, friendshipDBTypes, true, friendshipColumnsWithDefault...); err != nil {
-		t.Errorf("Unable to randomize Friendship struct: %s", err)
+	o := &Friend{}
+	if err = randomize.Struct(seed, o, friendDBTypes, true, friendColumnsWithDefault...); err != nil {
+		t.Errorf("Unable to randomize Friend struct: %s", err)
 	}
 
 	ctx := context.Background()
@@ -873,21 +770,21 @@ func testFriendshipsReloadAll(t *testing.T) {
 		t.Error(err)
 	}
 
-	slice := FriendshipSlice{o}
+	slice := FriendSlice{o}
 
 	if err = slice.ReloadAll(ctx, tx); err != nil {
 		t.Error(err)
 	}
 }
 
-func testFriendshipsSelect(t *testing.T) {
+func testFriendsSelect(t *testing.T) {
 	t.Parallel()
 
 	seed := randomize.NewSeed()
 	var err error
-	o := &Friendship{}
-	if err = randomize.Struct(seed, o, friendshipDBTypes, true, friendshipColumnsWithDefault...); err != nil {
-		t.Errorf("Unable to randomize Friendship struct: %s", err)
+	o := &Friend{}
+	if err = randomize.Struct(seed, o, friendDBTypes, true, friendColumnsWithDefault...); err != nil {
+		t.Errorf("Unable to randomize Friend struct: %s", err)
 	}
 
 	ctx := context.Background()
@@ -897,7 +794,7 @@ func testFriendshipsSelect(t *testing.T) {
 		t.Error(err)
 	}
 
-	slice, err := Friendships().All(ctx, tx)
+	slice, err := Friends().All(ctx, tx)
 	if err != nil {
 		t.Error(err)
 	}
@@ -908,25 +805,25 @@ func testFriendshipsSelect(t *testing.T) {
 }
 
 var (
-	friendshipDBTypes = map[string]string{`ID`: `integer`, `User1ID`: `integer`, `User2ID`: `integer`}
-	_                 = bytes.MinRead
+	friendDBTypes = map[string]string{`ID`: `integer`, `User1ID`: `integer`, `User2ID`: `integer`}
+	_             = bytes.MinRead
 )
 
-func testFriendshipsUpdate(t *testing.T) {
+func testFriendsUpdate(t *testing.T) {
 	t.Parallel()
 
-	if 0 == len(friendshipPrimaryKeyColumns) {
+	if 0 == len(friendPrimaryKeyColumns) {
 		t.Skip("Skipping table with no primary key columns")
 	}
-	if len(friendshipAllColumns) == len(friendshipPrimaryKeyColumns) {
+	if len(friendAllColumns) == len(friendPrimaryKeyColumns) {
 		t.Skip("Skipping table with only primary key columns")
 	}
 
 	seed := randomize.NewSeed()
 	var err error
-	o := &Friendship{}
-	if err = randomize.Struct(seed, o, friendshipDBTypes, true, friendshipColumnsWithDefault...); err != nil {
-		t.Errorf("Unable to randomize Friendship struct: %s", err)
+	o := &Friend{}
+	if err = randomize.Struct(seed, o, friendDBTypes, true, friendColumnsWithDefault...); err != nil {
+		t.Errorf("Unable to randomize Friend struct: %s", err)
 	}
 
 	ctx := context.Background()
@@ -936,7 +833,7 @@ func testFriendshipsUpdate(t *testing.T) {
 		t.Error(err)
 	}
 
-	count, err := Friendships().Count(ctx, tx)
+	count, err := Friends().Count(ctx, tx)
 	if err != nil {
 		t.Error(err)
 	}
@@ -945,8 +842,8 @@ func testFriendshipsUpdate(t *testing.T) {
 		t.Error("want one record, got:", count)
 	}
 
-	if err = randomize.Struct(seed, o, friendshipDBTypes, true, friendshipPrimaryKeyColumns...); err != nil {
-		t.Errorf("Unable to randomize Friendship struct: %s", err)
+	if err = randomize.Struct(seed, o, friendDBTypes, true, friendPrimaryKeyColumns...); err != nil {
+		t.Errorf("Unable to randomize Friend struct: %s", err)
 	}
 
 	if rowsAff, err := o.Update(ctx, tx, boil.Infer()); err != nil {
@@ -956,18 +853,18 @@ func testFriendshipsUpdate(t *testing.T) {
 	}
 }
 
-func testFriendshipsSliceUpdateAll(t *testing.T) {
+func testFriendsSliceUpdateAll(t *testing.T) {
 	t.Parallel()
 
-	if len(friendshipAllColumns) == len(friendshipPrimaryKeyColumns) {
+	if len(friendAllColumns) == len(friendPrimaryKeyColumns) {
 		t.Skip("Skipping table with only primary key columns")
 	}
 
 	seed := randomize.NewSeed()
 	var err error
-	o := &Friendship{}
-	if err = randomize.Struct(seed, o, friendshipDBTypes, true, friendshipColumnsWithDefault...); err != nil {
-		t.Errorf("Unable to randomize Friendship struct: %s", err)
+	o := &Friend{}
+	if err = randomize.Struct(seed, o, friendDBTypes, true, friendColumnsWithDefault...); err != nil {
+		t.Errorf("Unable to randomize Friend struct: %s", err)
 	}
 
 	ctx := context.Background()
@@ -977,7 +874,7 @@ func testFriendshipsSliceUpdateAll(t *testing.T) {
 		t.Error(err)
 	}
 
-	count, err := Friendships().Count(ctx, tx)
+	count, err := Friends().Count(ctx, tx)
 	if err != nil {
 		t.Error(err)
 	}
@@ -986,18 +883,18 @@ func testFriendshipsSliceUpdateAll(t *testing.T) {
 		t.Error("want one record, got:", count)
 	}
 
-	if err = randomize.Struct(seed, o, friendshipDBTypes, true, friendshipPrimaryKeyColumns...); err != nil {
-		t.Errorf("Unable to randomize Friendship struct: %s", err)
+	if err = randomize.Struct(seed, o, friendDBTypes, true, friendPrimaryKeyColumns...); err != nil {
+		t.Errorf("Unable to randomize Friend struct: %s", err)
 	}
 
 	// Remove Primary keys and unique columns from what we plan to update
 	var fields []string
-	if strmangle.StringSliceMatch(friendshipAllColumns, friendshipPrimaryKeyColumns) {
-		fields = friendshipAllColumns
+	if strmangle.StringSliceMatch(friendAllColumns, friendPrimaryKeyColumns) {
+		fields = friendAllColumns
 	} else {
 		fields = strmangle.SetComplement(
-			friendshipAllColumns,
-			friendshipPrimaryKeyColumns,
+			friendAllColumns,
+			friendPrimaryKeyColumns,
 		)
 	}
 
@@ -1015,7 +912,7 @@ func testFriendshipsSliceUpdateAll(t *testing.T) {
 		}
 	}
 
-	slice := FriendshipSlice{o}
+	slice := FriendSlice{o}
 	if rowsAff, err := slice.UpdateAll(ctx, tx, updateMap); err != nil {
 		t.Error(err)
 	} else if rowsAff != 1 {
@@ -1023,29 +920,29 @@ func testFriendshipsSliceUpdateAll(t *testing.T) {
 	}
 }
 
-func testFriendshipsUpsert(t *testing.T) {
+func testFriendsUpsert(t *testing.T) {
 	t.Parallel()
 
-	if len(friendshipAllColumns) == len(friendshipPrimaryKeyColumns) {
+	if len(friendAllColumns) == len(friendPrimaryKeyColumns) {
 		t.Skip("Skipping table with only primary key columns")
 	}
 
 	seed := randomize.NewSeed()
 	var err error
 	// Attempt the INSERT side of an UPSERT
-	o := Friendship{}
-	if err = randomize.Struct(seed, &o, friendshipDBTypes, true); err != nil {
-		t.Errorf("Unable to randomize Friendship struct: %s", err)
+	o := Friend{}
+	if err = randomize.Struct(seed, &o, friendDBTypes, true); err != nil {
+		t.Errorf("Unable to randomize Friend struct: %s", err)
 	}
 
 	ctx := context.Background()
 	tx := MustTx(boil.BeginTx(ctx, nil))
 	defer func() { _ = tx.Rollback() }()
 	if err = o.Upsert(ctx, tx, false, nil, boil.Infer(), boil.Infer()); err != nil {
-		t.Errorf("Unable to upsert Friendship: %s", err)
+		t.Errorf("Unable to upsert Friend: %s", err)
 	}
 
-	count, err := Friendships().Count(ctx, tx)
+	count, err := Friends().Count(ctx, tx)
 	if err != nil {
 		t.Error(err)
 	}
@@ -1054,15 +951,15 @@ func testFriendshipsUpsert(t *testing.T) {
 	}
 
 	// Attempt the UPDATE side of an UPSERT
-	if err = randomize.Struct(seed, &o, friendshipDBTypes, false, friendshipPrimaryKeyColumns...); err != nil {
-		t.Errorf("Unable to randomize Friendship struct: %s", err)
+	if err = randomize.Struct(seed, &o, friendDBTypes, false, friendPrimaryKeyColumns...); err != nil {
+		t.Errorf("Unable to randomize Friend struct: %s", err)
 	}
 
 	if err = o.Upsert(ctx, tx, true, nil, boil.Infer(), boil.Infer()); err != nil {
-		t.Errorf("Unable to upsert Friendship: %s", err)
+		t.Errorf("Unable to upsert Friend: %s", err)
 	}
 
-	count, err = Friendships().Count(ctx, tx)
+	count, err = Friends().Count(ctx, tx)
 	if err != nil {
 		t.Error(err)
 	}

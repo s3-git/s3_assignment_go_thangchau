@@ -8,11 +8,11 @@ import "testing"
 // TestToOne tests cannot be run in parallel
 // or deadlocks can occur.
 func TestToOne(t *testing.T) {
-	t.Run("BlockToUserUsingRequestor", testBlockToOneUserUsingRequestor)
-	t.Run("BlockToUserUsingTarget", testBlockToOneUserUsingTarget)
-	t.Run("FriendshipToUserUsingUser1", testFriendshipToOneUserUsingUser1)
-	t.Run("FriendshipToUserUsingUser2", testFriendshipToOneUserUsingUser2)
-	t.Run("SubscriptionToUserUsingRequestor", testSubscriptionToOneUserUsingRequestor)
+	t.Run("BlockToUserUsingBlocked", testBlockToOneUserUsingBlocked)
+	t.Run("BlockToUserUsingBlocker", testBlockToOneUserUsingBlocker)
+	t.Run("FriendToUserUsingUser1", testFriendToOneUserUsingUser1)
+	t.Run("FriendToUserUsingUser2", testFriendToOneUserUsingUser2)
+	t.Run("SubscriptionToUserUsingSubscriber", testSubscriptionToOneUserUsingSubscriber)
 	t.Run("SubscriptionToUserUsingTarget", testSubscriptionToOneUserUsingTarget)
 }
 
@@ -23,35 +23,28 @@ func TestOneToOne(t *testing.T) {}
 // TestToMany tests cannot be run in parallel
 // or deadlocks can occur.
 func TestToMany(t *testing.T) {
-	t.Run("UserToRequestorBlocks", testUserToManyRequestorBlocks)
-	t.Run("UserToTargetBlocks", testUserToManyTargetBlocks)
-	t.Run("UserToUser1Friendships", testUserToManyUser1Friendships)
-	t.Run("UserToUser2Friendships", testUserToManyUser2Friendships)
-	t.Run("UserToRequestorSubscriptions", testUserToManyRequestorSubscriptions)
+	t.Run("UserToBlockedBlocks", testUserToManyBlockedBlocks)
+	t.Run("UserToBlockerBlocks", testUserToManyBlockerBlocks)
+	t.Run("UserToUser1Friends", testUserToManyUser1Friends)
+	t.Run("UserToUser2Friends", testUserToManyUser2Friends)
+	t.Run("UserToSubscriberSubscriptions", testUserToManySubscriberSubscriptions)
 	t.Run("UserToTargetSubscriptions", testUserToManyTargetSubscriptions)
 }
 
 // TestToOneSet tests cannot be run in parallel
 // or deadlocks can occur.
 func TestToOneSet(t *testing.T) {
-	t.Run("BlockToUserUsingRequestorBlocks", testBlockToOneSetOpUserUsingRequestor)
-	t.Run("BlockToUserUsingTargetBlocks", testBlockToOneSetOpUserUsingTarget)
-	t.Run("FriendshipToUserUsingUser1Friendships", testFriendshipToOneSetOpUserUsingUser1)
-	t.Run("FriendshipToUserUsingUser2Friendships", testFriendshipToOneSetOpUserUsingUser2)
-	t.Run("SubscriptionToUserUsingRequestorSubscriptions", testSubscriptionToOneSetOpUserUsingRequestor)
+	t.Run("BlockToUserUsingBlockedBlocks", testBlockToOneSetOpUserUsingBlocked)
+	t.Run("BlockToUserUsingBlockerBlocks", testBlockToOneSetOpUserUsingBlocker)
+	t.Run("FriendToUserUsingUser1Friends", testFriendToOneSetOpUserUsingUser1)
+	t.Run("FriendToUserUsingUser2Friends", testFriendToOneSetOpUserUsingUser2)
+	t.Run("SubscriptionToUserUsingSubscriberSubscriptions", testSubscriptionToOneSetOpUserUsingSubscriber)
 	t.Run("SubscriptionToUserUsingTargetSubscriptions", testSubscriptionToOneSetOpUserUsingTarget)
 }
 
 // TestToOneRemove tests cannot be run in parallel
 // or deadlocks can occur.
-func TestToOneRemove(t *testing.T) {
-	t.Run("BlockToUserUsingRequestorBlocks", testBlockToOneRemoveOpUserUsingRequestor)
-	t.Run("BlockToUserUsingTargetBlocks", testBlockToOneRemoveOpUserUsingTarget)
-	t.Run("FriendshipToUserUsingUser1Friendships", testFriendshipToOneRemoveOpUserUsingUser1)
-	t.Run("FriendshipToUserUsingUser2Friendships", testFriendshipToOneRemoveOpUserUsingUser2)
-	t.Run("SubscriptionToUserUsingRequestorSubscriptions", testSubscriptionToOneRemoveOpUserUsingRequestor)
-	t.Run("SubscriptionToUserUsingTargetSubscriptions", testSubscriptionToOneRemoveOpUserUsingTarget)
-}
+func TestToOneRemove(t *testing.T) {}
 
 // TestOneToOneSet tests cannot be run in parallel
 // or deadlocks can occur.
@@ -64,32 +57,18 @@ func TestOneToOneRemove(t *testing.T) {}
 // TestToManyAdd tests cannot be run in parallel
 // or deadlocks can occur.
 func TestToManyAdd(t *testing.T) {
-	t.Run("UserToRequestorBlocks", testUserToManyAddOpRequestorBlocks)
-	t.Run("UserToTargetBlocks", testUserToManyAddOpTargetBlocks)
-	t.Run("UserToUser1Friendships", testUserToManyAddOpUser1Friendships)
-	t.Run("UserToUser2Friendships", testUserToManyAddOpUser2Friendships)
-	t.Run("UserToRequestorSubscriptions", testUserToManyAddOpRequestorSubscriptions)
+	t.Run("UserToBlockedBlocks", testUserToManyAddOpBlockedBlocks)
+	t.Run("UserToBlockerBlocks", testUserToManyAddOpBlockerBlocks)
+	t.Run("UserToUser1Friends", testUserToManyAddOpUser1Friends)
+	t.Run("UserToUser2Friends", testUserToManyAddOpUser2Friends)
+	t.Run("UserToSubscriberSubscriptions", testUserToManyAddOpSubscriberSubscriptions)
 	t.Run("UserToTargetSubscriptions", testUserToManyAddOpTargetSubscriptions)
 }
 
 // TestToManySet tests cannot be run in parallel
 // or deadlocks can occur.
-func TestToManySet(t *testing.T) {
-	t.Run("UserToRequestorBlocks", testUserToManySetOpRequestorBlocks)
-	t.Run("UserToTargetBlocks", testUserToManySetOpTargetBlocks)
-	t.Run("UserToUser1Friendships", testUserToManySetOpUser1Friendships)
-	t.Run("UserToUser2Friendships", testUserToManySetOpUser2Friendships)
-	t.Run("UserToRequestorSubscriptions", testUserToManySetOpRequestorSubscriptions)
-	t.Run("UserToTargetSubscriptions", testUserToManySetOpTargetSubscriptions)
-}
+func TestToManySet(t *testing.T) {}
 
 // TestToManyRemove tests cannot be run in parallel
 // or deadlocks can occur.
-func TestToManyRemove(t *testing.T) {
-	t.Run("UserToRequestorBlocks", testUserToManyRemoveOpRequestorBlocks)
-	t.Run("UserToTargetBlocks", testUserToManyRemoveOpTargetBlocks)
-	t.Run("UserToUser1Friendships", testUserToManyRemoveOpUser1Friendships)
-	t.Run("UserToUser2Friendships", testUserToManyRemoveOpUser2Friendships)
-	t.Run("UserToRequestorSubscriptions", testUserToManyRemoveOpRequestorSubscriptions)
-	t.Run("UserToTargetSubscriptions", testUserToManyRemoveOpTargetSubscriptions)
-}
+func TestToManyRemove(t *testing.T) {}

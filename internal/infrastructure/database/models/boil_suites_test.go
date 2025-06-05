@@ -13,77 +13,77 @@ import "testing"
 // Separating the tests thusly grants avoidance of Postgres deadlocks.
 func TestParent(t *testing.T) {
 	t.Run("Blocks", testBlocks)
-	t.Run("Friendships", testFriendships)
+	t.Run("Friends", testFriends)
 	t.Run("Subscriptions", testSubscriptions)
 	t.Run("Users", testUsers)
 }
 
 func TestDelete(t *testing.T) {
 	t.Run("Blocks", testBlocksDelete)
-	t.Run("Friendships", testFriendshipsDelete)
+	t.Run("Friends", testFriendsDelete)
 	t.Run("Subscriptions", testSubscriptionsDelete)
 	t.Run("Users", testUsersDelete)
 }
 
 func TestQueryDeleteAll(t *testing.T) {
 	t.Run("Blocks", testBlocksQueryDeleteAll)
-	t.Run("Friendships", testFriendshipsQueryDeleteAll)
+	t.Run("Friends", testFriendsQueryDeleteAll)
 	t.Run("Subscriptions", testSubscriptionsQueryDeleteAll)
 	t.Run("Users", testUsersQueryDeleteAll)
 }
 
 func TestSliceDeleteAll(t *testing.T) {
 	t.Run("Blocks", testBlocksSliceDeleteAll)
-	t.Run("Friendships", testFriendshipsSliceDeleteAll)
+	t.Run("Friends", testFriendsSliceDeleteAll)
 	t.Run("Subscriptions", testSubscriptionsSliceDeleteAll)
 	t.Run("Users", testUsersSliceDeleteAll)
 }
 
 func TestExists(t *testing.T) {
 	t.Run("Blocks", testBlocksExists)
-	t.Run("Friendships", testFriendshipsExists)
+	t.Run("Friends", testFriendsExists)
 	t.Run("Subscriptions", testSubscriptionsExists)
 	t.Run("Users", testUsersExists)
 }
 
 func TestFind(t *testing.T) {
 	t.Run("Blocks", testBlocksFind)
-	t.Run("Friendships", testFriendshipsFind)
+	t.Run("Friends", testFriendsFind)
 	t.Run("Subscriptions", testSubscriptionsFind)
 	t.Run("Users", testUsersFind)
 }
 
 func TestBind(t *testing.T) {
 	t.Run("Blocks", testBlocksBind)
-	t.Run("Friendships", testFriendshipsBind)
+	t.Run("Friends", testFriendsBind)
 	t.Run("Subscriptions", testSubscriptionsBind)
 	t.Run("Users", testUsersBind)
 }
 
 func TestOne(t *testing.T) {
 	t.Run("Blocks", testBlocksOne)
-	t.Run("Friendships", testFriendshipsOne)
+	t.Run("Friends", testFriendsOne)
 	t.Run("Subscriptions", testSubscriptionsOne)
 	t.Run("Users", testUsersOne)
 }
 
 func TestAll(t *testing.T) {
 	t.Run("Blocks", testBlocksAll)
-	t.Run("Friendships", testFriendshipsAll)
+	t.Run("Friends", testFriendsAll)
 	t.Run("Subscriptions", testSubscriptionsAll)
 	t.Run("Users", testUsersAll)
 }
 
 func TestCount(t *testing.T) {
 	t.Run("Blocks", testBlocksCount)
-	t.Run("Friendships", testFriendshipsCount)
+	t.Run("Friends", testFriendsCount)
 	t.Run("Subscriptions", testSubscriptionsCount)
 	t.Run("Users", testUsersCount)
 }
 
 func TestHooks(t *testing.T) {
 	t.Run("Blocks", testBlocksHooks)
-	t.Run("Friendships", testFriendshipsHooks)
+	t.Run("Friends", testFriendsHooks)
 	t.Run("Subscriptions", testSubscriptionsHooks)
 	t.Run("Users", testUsersHooks)
 }
@@ -91,8 +91,8 @@ func TestHooks(t *testing.T) {
 func TestInsert(t *testing.T) {
 	t.Run("Blocks", testBlocksInsert)
 	t.Run("Blocks", testBlocksInsertWhitelist)
-	t.Run("Friendships", testFriendshipsInsert)
-	t.Run("Friendships", testFriendshipsInsertWhitelist)
+	t.Run("Friends", testFriendsInsert)
+	t.Run("Friends", testFriendsInsertWhitelist)
 	t.Run("Subscriptions", testSubscriptionsInsert)
 	t.Run("Subscriptions", testSubscriptionsInsertWhitelist)
 	t.Run("Users", testUsersInsert)
@@ -101,35 +101,35 @@ func TestInsert(t *testing.T) {
 
 func TestReload(t *testing.T) {
 	t.Run("Blocks", testBlocksReload)
-	t.Run("Friendships", testFriendshipsReload)
+	t.Run("Friends", testFriendsReload)
 	t.Run("Subscriptions", testSubscriptionsReload)
 	t.Run("Users", testUsersReload)
 }
 
 func TestReloadAll(t *testing.T) {
 	t.Run("Blocks", testBlocksReloadAll)
-	t.Run("Friendships", testFriendshipsReloadAll)
+	t.Run("Friends", testFriendsReloadAll)
 	t.Run("Subscriptions", testSubscriptionsReloadAll)
 	t.Run("Users", testUsersReloadAll)
 }
 
 func TestSelect(t *testing.T) {
 	t.Run("Blocks", testBlocksSelect)
-	t.Run("Friendships", testFriendshipsSelect)
+	t.Run("Friends", testFriendsSelect)
 	t.Run("Subscriptions", testSubscriptionsSelect)
 	t.Run("Users", testUsersSelect)
 }
 
 func TestUpdate(t *testing.T) {
 	t.Run("Blocks", testBlocksUpdate)
-	t.Run("Friendships", testFriendshipsUpdate)
+	t.Run("Friends", testFriendsUpdate)
 	t.Run("Subscriptions", testSubscriptionsUpdate)
 	t.Run("Users", testUsersUpdate)
 }
 
 func TestSliceUpdateAll(t *testing.T) {
 	t.Run("Blocks", testBlocksSliceUpdateAll)
-	t.Run("Friendships", testFriendshipsSliceUpdateAll)
+	t.Run("Friends", testFriendsSliceUpdateAll)
 	t.Run("Subscriptions", testSubscriptionsSliceUpdateAll)
 	t.Run("Users", testUsersSliceUpdateAll)
 }

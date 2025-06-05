@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/friendsofgo/errors"
-	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -24,32 +23,32 @@ import (
 
 // Block is an object representing the database table.
 type Block struct {
-	ID          int      `boil:"id" json:"id" toml:"id" yaml:"id"`
-	RequestorID null.Int `boil:"requestor_id" json:"requestor_id,omitempty" toml:"requestor_id" yaml:"requestor_id,omitempty"`
-	TargetID    null.Int `boil:"target_id" json:"target_id,omitempty" toml:"target_id" yaml:"target_id,omitempty"`
+	ID        int `boil:"id" json:"id" toml:"id" yaml:"id"`
+	BlockerID int `boil:"blocker_id" json:"blocker_id" toml:"blocker_id" yaml:"blocker_id"`
+	BlockedID int `boil:"blocked_id" json:"blocked_id" toml:"blocked_id" yaml:"blocked_id"`
 
 	R *blockR `boil:"-" json:"-" toml:"-" yaml:"-"`
 	L blockL  `boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var BlockColumns = struct {
-	ID          string
-	RequestorID string
-	TargetID    string
+	ID        string
+	BlockerID string
+	BlockedID string
 }{
-	ID:          "id",
-	RequestorID: "requestor_id",
-	TargetID:    "target_id",
+	ID:        "id",
+	BlockerID: "blocker_id",
+	BlockedID: "blocked_id",
 }
 
 var BlockTableColumns = struct {
-	ID          string
-	RequestorID string
-	TargetID    string
+	ID        string
+	BlockerID string
+	BlockedID string
 }{
-	ID:          "blocks.id",
-	RequestorID: "blocks.requestor_id",
-	TargetID:    "blocks.target_id",
+	ID:        "blocks.id",
+	BlockerID: "blocks.blocker_id",
+	BlockedID: "blocks.blocked_id",
 }
 
 // Generated where
@@ -77,67 +76,29 @@ func (w whereHelperint) NIN(slice []int) qm.QueryMod {
 	return qm.WhereNotIn(fmt.Sprintf("%s NOT IN ?", w.field), values...)
 }
 
-type whereHelpernull_Int struct{ field string }
-
-func (w whereHelpernull_Int) EQ(x null.Int) qm.QueryMod {
-	return qmhelper.WhereNullEQ(w.field, false, x)
-}
-func (w whereHelpernull_Int) NEQ(x null.Int) qm.QueryMod {
-	return qmhelper.WhereNullEQ(w.field, true, x)
-}
-func (w whereHelpernull_Int) LT(x null.Int) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.LT, x)
-}
-func (w whereHelpernull_Int) LTE(x null.Int) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.LTE, x)
-}
-func (w whereHelpernull_Int) GT(x null.Int) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.GT, x)
-}
-func (w whereHelpernull_Int) GTE(x null.Int) qm.QueryMod {
-	return qmhelper.Where(w.field, qmhelper.GTE, x)
-}
-func (w whereHelpernull_Int) IN(slice []int) qm.QueryMod {
-	values := make([]interface{}, 0, len(slice))
-	for _, value := range slice {
-		values = append(values, value)
-	}
-	return qm.WhereIn(fmt.Sprintf("%s IN ?", w.field), values...)
-}
-func (w whereHelpernull_Int) NIN(slice []int) qm.QueryMod {
-	values := make([]interface{}, 0, len(slice))
-	for _, value := range slice {
-		values = append(values, value)
-	}
-	return qm.WhereNotIn(fmt.Sprintf("%s NOT IN ?", w.field), values...)
-}
-
-func (w whereHelpernull_Int) IsNull() qm.QueryMod    { return qmhelper.WhereIsNull(w.field) }
-func (w whereHelpernull_Int) IsNotNull() qm.QueryMod { return qmhelper.WhereIsNotNull(w.field) }
-
 var BlockWhere = struct {
-	ID          whereHelperint
-	RequestorID whereHelpernull_Int
-	TargetID    whereHelpernull_Int
+	ID        whereHelperint
+	BlockerID whereHelperint
+	BlockedID whereHelperint
 }{
-	ID:          whereHelperint{field: "\"blocks\".\"id\""},
-	RequestorID: whereHelpernull_Int{field: "\"blocks\".\"requestor_id\""},
-	TargetID:    whereHelpernull_Int{field: "\"blocks\".\"target_id\""},
+	ID:        whereHelperint{field: "\"blocks\".\"id\""},
+	BlockerID: whereHelperint{field: "\"blocks\".\"blocker_id\""},
+	BlockedID: whereHelperint{field: "\"blocks\".\"blocked_id\""},
 }
 
 // BlockRels is where relationship names are stored.
 var BlockRels = struct {
-	Requestor string
-	Target    string
+	Blocked string
+	Blocker string
 }{
-	Requestor: "Requestor",
-	Target:    "Target",
+	Blocked: "Blocked",
+	Blocker: "Blocker",
 }
 
 // blockR is where relationships are stored.
 type blockR struct {
-	Requestor *User `boil:"Requestor" json:"Requestor" toml:"Requestor" yaml:"Requestor"`
-	Target    *User `boil:"Target" json:"Target" toml:"Target" yaml:"Target"`
+	Blocked *User `boil:"Blocked" json:"Blocked" toml:"Blocked" yaml:"Blocked"`
+	Blocker *User `boil:"Blocker" json:"Blocker" toml:"Blocker" yaml:"Blocker"`
 }
 
 // NewStruct creates a new relationship struct
@@ -145,45 +106,45 @@ func (*blockR) NewStruct() *blockR {
 	return &blockR{}
 }
 
-func (o *Block) GetRequestor() *User {
+func (o *Block) GetBlocked() *User {
 	if o == nil {
 		return nil
 	}
 
-	return o.R.GetRequestor()
+	return o.R.GetBlocked()
 }
 
-func (r *blockR) GetRequestor() *User {
+func (r *blockR) GetBlocked() *User {
 	if r == nil {
 		return nil
 	}
 
-	return r.Requestor
+	return r.Blocked
 }
 
-func (o *Block) GetTarget() *User {
+func (o *Block) GetBlocker() *User {
 	if o == nil {
 		return nil
 	}
 
-	return o.R.GetTarget()
+	return o.R.GetBlocker()
 }
 
-func (r *blockR) GetTarget() *User {
+func (r *blockR) GetBlocker() *User {
 	if r == nil {
 		return nil
 	}
 
-	return r.Target
+	return r.Blocker
 }
 
 // blockL is where Load methods for each relationship are stored.
 type blockL struct{}
 
 var (
-	blockAllColumns            = []string{"id", "requestor_id", "target_id"}
-	blockColumnsWithoutDefault = []string{"id"}
-	blockColumnsWithDefault    = []string{"requestor_id", "target_id"}
+	blockAllColumns            = []string{"id", "blocker_id", "blocked_id"}
+	blockColumnsWithoutDefault = []string{"blocker_id", "blocked_id"}
+	blockColumnsWithDefault    = []string{"id"}
 	blockPrimaryKeyColumns     = []string{"id"}
 	blockGeneratedColumns      = []string{}
 )
@@ -493,10 +454,10 @@ func (q blockQuery) Exists(ctx context.Context, exec boil.ContextExecutor) (bool
 	return count > 0, nil
 }
 
-// Requestor pointed to by the foreign key.
-func (o *Block) Requestor(mods ...qm.QueryMod) userQuery {
+// Blocked pointed to by the foreign key.
+func (o *Block) Blocked(mods ...qm.QueryMod) userQuery {
 	queryMods := []qm.QueryMod{
-		qm.Where("\"id\" = ?", o.RequestorID),
+		qm.Where("\"id\" = ?", o.BlockedID),
 	}
 
 	queryMods = append(queryMods, mods...)
@@ -504,10 +465,10 @@ func (o *Block) Requestor(mods ...qm.QueryMod) userQuery {
 	return Users(queryMods...)
 }
 
-// Target pointed to by the foreign key.
-func (o *Block) Target(mods ...qm.QueryMod) userQuery {
+// Blocker pointed to by the foreign key.
+func (o *Block) Blocker(mods ...qm.QueryMod) userQuery {
 	queryMods := []qm.QueryMod{
-		qm.Where("\"id\" = ?", o.TargetID),
+		qm.Where("\"id\" = ?", o.BlockerID),
 	}
 
 	queryMods = append(queryMods, mods...)
@@ -515,9 +476,9 @@ func (o *Block) Target(mods ...qm.QueryMod) userQuery {
 	return Users(queryMods...)
 }
 
-// LoadRequestor allows an eager lookup of values, cached into the
+// LoadBlocked allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
-func (blockL) LoadRequestor(ctx context.Context, e boil.ContextExecutor, singular bool, maybeBlock interface{}, mods queries.Applicator) error {
+func (blockL) LoadBlocked(ctx context.Context, e boil.ContextExecutor, singular bool, maybeBlock interface{}, mods queries.Applicator) error {
 	var slice []*Block
 	var object *Block
 
@@ -548,9 +509,7 @@ func (blockL) LoadRequestor(ctx context.Context, e boil.ContextExecutor, singula
 		if object.R == nil {
 			object.R = &blockR{}
 		}
-		if !queries.IsNil(object.RequestorID) {
-			args[object.RequestorID] = struct{}{}
-		}
+		args[object.BlockedID] = struct{}{}
 
 	} else {
 		for _, obj := range slice {
@@ -558,9 +517,7 @@ func (blockL) LoadRequestor(ctx context.Context, e boil.ContextExecutor, singula
 				obj.R = &blockR{}
 			}
 
-			if !queries.IsNil(obj.RequestorID) {
-				args[obj.RequestorID] = struct{}{}
-			}
+			args[obj.BlockedID] = struct{}{}
 
 		}
 	}
@@ -615,22 +572,22 @@ func (blockL) LoadRequestor(ctx context.Context, e boil.ContextExecutor, singula
 
 	if singular {
 		foreign := resultSlice[0]
-		object.R.Requestor = foreign
+		object.R.Blocked = foreign
 		if foreign.R == nil {
 			foreign.R = &userR{}
 		}
-		foreign.R.RequestorBlocks = append(foreign.R.RequestorBlocks, object)
+		foreign.R.BlockedBlocks = append(foreign.R.BlockedBlocks, object)
 		return nil
 	}
 
 	for _, local := range slice {
 		for _, foreign := range resultSlice {
-			if queries.Equal(local.RequestorID, foreign.ID) {
-				local.R.Requestor = foreign
+			if local.BlockedID == foreign.ID {
+				local.R.Blocked = foreign
 				if foreign.R == nil {
 					foreign.R = &userR{}
 				}
-				foreign.R.RequestorBlocks = append(foreign.R.RequestorBlocks, local)
+				foreign.R.BlockedBlocks = append(foreign.R.BlockedBlocks, local)
 				break
 			}
 		}
@@ -639,9 +596,9 @@ func (blockL) LoadRequestor(ctx context.Context, e boil.ContextExecutor, singula
 	return nil
 }
 
-// LoadTarget allows an eager lookup of values, cached into the
+// LoadBlocker allows an eager lookup of values, cached into the
 // loaded structs of the objects. This is for an N-1 relationship.
-func (blockL) LoadTarget(ctx context.Context, e boil.ContextExecutor, singular bool, maybeBlock interface{}, mods queries.Applicator) error {
+func (blockL) LoadBlocker(ctx context.Context, e boil.ContextExecutor, singular bool, maybeBlock interface{}, mods queries.Applicator) error {
 	var slice []*Block
 	var object *Block
 
@@ -672,9 +629,7 @@ func (blockL) LoadTarget(ctx context.Context, e boil.ContextExecutor, singular b
 		if object.R == nil {
 			object.R = &blockR{}
 		}
-		if !queries.IsNil(object.TargetID) {
-			args[object.TargetID] = struct{}{}
-		}
+		args[object.BlockerID] = struct{}{}
 
 	} else {
 		for _, obj := range slice {
@@ -682,9 +637,7 @@ func (blockL) LoadTarget(ctx context.Context, e boil.ContextExecutor, singular b
 				obj.R = &blockR{}
 			}
 
-			if !queries.IsNil(obj.TargetID) {
-				args[obj.TargetID] = struct{}{}
-			}
+			args[obj.BlockerID] = struct{}{}
 
 		}
 	}
@@ -739,22 +692,22 @@ func (blockL) LoadTarget(ctx context.Context, e boil.ContextExecutor, singular b
 
 	if singular {
 		foreign := resultSlice[0]
-		object.R.Target = foreign
+		object.R.Blocker = foreign
 		if foreign.R == nil {
 			foreign.R = &userR{}
 		}
-		foreign.R.TargetBlocks = append(foreign.R.TargetBlocks, object)
+		foreign.R.BlockerBlocks = append(foreign.R.BlockerBlocks, object)
 		return nil
 	}
 
 	for _, local := range slice {
 		for _, foreign := range resultSlice {
-			if queries.Equal(local.TargetID, foreign.ID) {
-				local.R.Target = foreign
+			if local.BlockerID == foreign.ID {
+				local.R.Blocker = foreign
 				if foreign.R == nil {
 					foreign.R = &userR{}
 				}
-				foreign.R.TargetBlocks = append(foreign.R.TargetBlocks, local)
+				foreign.R.BlockerBlocks = append(foreign.R.BlockerBlocks, local)
 				break
 			}
 		}
@@ -763,10 +716,10 @@ func (blockL) LoadTarget(ctx context.Context, e boil.ContextExecutor, singular b
 	return nil
 }
 
-// SetRequestor of the block to the related item.
-// Sets o.R.Requestor to related.
-// Adds o to related.R.RequestorBlocks.
-func (o *Block) SetRequestor(ctx context.Context, exec boil.ContextExecutor, insert bool, related *User) error {
+// SetBlocked of the block to the related item.
+// Sets o.R.Blocked to related.
+// Adds o to related.R.BlockedBlocks.
+func (o *Block) SetBlocked(ctx context.Context, exec boil.ContextExecutor, insert bool, related *User) error {
 	var err error
 	if insert {
 		if err = related.Insert(ctx, exec, boil.Infer()); err != nil {
@@ -776,7 +729,7 @@ func (o *Block) SetRequestor(ctx context.Context, exec boil.ContextExecutor, ins
 
 	updateQuery := fmt.Sprintf(
 		"UPDATE \"blocks\" SET %s WHERE %s",
-		strmangle.SetParamNames("\"", "\"", 1, []string{"requestor_id"}),
+		strmangle.SetParamNames("\"", "\"", 1, []string{"blocked_id"}),
 		strmangle.WhereClause("\"", "\"", 2, blockPrimaryKeyColumns),
 	)
 	values := []interface{}{related.ID, o.ID}
@@ -790,63 +743,30 @@ func (o *Block) SetRequestor(ctx context.Context, exec boil.ContextExecutor, ins
 		return errors.Wrap(err, "failed to update local table")
 	}
 
-	queries.Assign(&o.RequestorID, related.ID)
+	o.BlockedID = related.ID
 	if o.R == nil {
 		o.R = &blockR{
-			Requestor: related,
+			Blocked: related,
 		}
 	} else {
-		o.R.Requestor = related
+		o.R.Blocked = related
 	}
 
 	if related.R == nil {
 		related.R = &userR{
-			RequestorBlocks: BlockSlice{o},
+			BlockedBlocks: BlockSlice{o},
 		}
 	} else {
-		related.R.RequestorBlocks = append(related.R.RequestorBlocks, o)
+		related.R.BlockedBlocks = append(related.R.BlockedBlocks, o)
 	}
 
 	return nil
 }
 
-// RemoveRequestor relationship.
-// Sets o.R.Requestor to nil.
-// Removes o from all passed in related items' relationships struct.
-func (o *Block) RemoveRequestor(ctx context.Context, exec boil.ContextExecutor, related *User) error {
-	var err error
-
-	queries.SetScanner(&o.RequestorID, nil)
-	if _, err = o.Update(ctx, exec, boil.Whitelist("requestor_id")); err != nil {
-		return errors.Wrap(err, "failed to update local table")
-	}
-
-	if o.R != nil {
-		o.R.Requestor = nil
-	}
-	if related == nil || related.R == nil {
-		return nil
-	}
-
-	for i, ri := range related.R.RequestorBlocks {
-		if queries.Equal(o.RequestorID, ri.RequestorID) {
-			continue
-		}
-
-		ln := len(related.R.RequestorBlocks)
-		if ln > 1 && i < ln-1 {
-			related.R.RequestorBlocks[i] = related.R.RequestorBlocks[ln-1]
-		}
-		related.R.RequestorBlocks = related.R.RequestorBlocks[:ln-1]
-		break
-	}
-	return nil
-}
-
-// SetTarget of the block to the related item.
-// Sets o.R.Target to related.
-// Adds o to related.R.TargetBlocks.
-func (o *Block) SetTarget(ctx context.Context, exec boil.ContextExecutor, insert bool, related *User) error {
+// SetBlocker of the block to the related item.
+// Sets o.R.Blocker to related.
+// Adds o to related.R.BlockerBlocks.
+func (o *Block) SetBlocker(ctx context.Context, exec boil.ContextExecutor, insert bool, related *User) error {
 	var err error
 	if insert {
 		if err = related.Insert(ctx, exec, boil.Infer()); err != nil {
@@ -856,7 +776,7 @@ func (o *Block) SetTarget(ctx context.Context, exec boil.ContextExecutor, insert
 
 	updateQuery := fmt.Sprintf(
 		"UPDATE \"blocks\" SET %s WHERE %s",
-		strmangle.SetParamNames("\"", "\"", 1, []string{"target_id"}),
+		strmangle.SetParamNames("\"", "\"", 1, []string{"blocker_id"}),
 		strmangle.WhereClause("\"", "\"", 2, blockPrimaryKeyColumns),
 	)
 	values := []interface{}{related.ID, o.ID}
@@ -870,56 +790,23 @@ func (o *Block) SetTarget(ctx context.Context, exec boil.ContextExecutor, insert
 		return errors.Wrap(err, "failed to update local table")
 	}
 
-	queries.Assign(&o.TargetID, related.ID)
+	o.BlockerID = related.ID
 	if o.R == nil {
 		o.R = &blockR{
-			Target: related,
+			Blocker: related,
 		}
 	} else {
-		o.R.Target = related
+		o.R.Blocker = related
 	}
 
 	if related.R == nil {
 		related.R = &userR{
-			TargetBlocks: BlockSlice{o},
+			BlockerBlocks: BlockSlice{o},
 		}
 	} else {
-		related.R.TargetBlocks = append(related.R.TargetBlocks, o)
+		related.R.BlockerBlocks = append(related.R.BlockerBlocks, o)
 	}
 
-	return nil
-}
-
-// RemoveTarget relationship.
-// Sets o.R.Target to nil.
-// Removes o from all passed in related items' relationships struct.
-func (o *Block) RemoveTarget(ctx context.Context, exec boil.ContextExecutor, related *User) error {
-	var err error
-
-	queries.SetScanner(&o.TargetID, nil)
-	if _, err = o.Update(ctx, exec, boil.Whitelist("target_id")); err != nil {
-		return errors.Wrap(err, "failed to update local table")
-	}
-
-	if o.R != nil {
-		o.R.Target = nil
-	}
-	if related == nil || related.R == nil {
-		return nil
-	}
-
-	for i, ri := range related.R.TargetBlocks {
-		if queries.Equal(o.TargetID, ri.TargetID) {
-			continue
-		}
-
-		ln := len(related.R.TargetBlocks)
-		if ln > 1 && i < ln-1 {
-			related.R.TargetBlocks[i] = related.R.TargetBlocks[ln-1]
-		}
-		related.R.TargetBlocks = related.R.TargetBlocks[:ln-1]
-		break
-	}
 	return nil
 }
 

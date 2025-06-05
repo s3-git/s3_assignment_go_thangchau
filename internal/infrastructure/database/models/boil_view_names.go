@@ -4,4 +4,9 @@
 package models
 
 var ViewNames = struct {
-}{}
+	UpdateRecipients string
+	UserFriends      string
+}{
+	UpdateRecipients: "update_recipients",
+	UserFriends:      "user_friends",
+}
