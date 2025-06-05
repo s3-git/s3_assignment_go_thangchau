@@ -31,7 +31,7 @@ func (h *UserHandler) CreateFriendships(c *gin.Context) {
 		return
 	}
 
-	if err := h.userController.CreateFriendships(req.Friends[0], req.Friends[1]); err != nil {
+	if err := h.userController.CreateFriendship(req.Friends[0], req.Friends[1]); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

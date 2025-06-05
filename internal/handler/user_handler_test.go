@@ -16,8 +16,7 @@ type mockUserController struct {
 	createFriendshipsFunc func(string, string) error
 }
 
-// Implement all interface methods
-func (m *mockUserController) CreateFriendships(u1, u2 string) error {
+func (m *mockUserController) CreateFriendship(u1, u2 string) error {
 	if m.createFriendshipsFunc != nil {
 		return m.createFriendshipsFunc(u1, u2)
 	}
@@ -50,7 +49,7 @@ func TestCreateFriendships(t *testing.T) {
 				return errors.New("invalid body")
 			},
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   `{"error":"invalid request"}`,
+			expectedBody:   `{"error":"exactly 2 friends required"}`,
 		},
 		{
 			name: "internal server error",
@@ -82,9 +81,9 @@ func TestCreateFriendships(t *testing.T) {
 			handler := NewUserHandler(mockController)
 
 			router := gin.New()
-			router.POST("/friend", handler.CreateFriendships)
+			router.POST("/friends", handler.CreateFriendships)
 
-			req, err := http.NewRequest(http.MethodPost, "/friend", bytes.NewBuffer([]byte(tt.body)))
+			req, err := http.NewRequest(http.MethodPost, "/friends", bytes.NewBuffer([]byte(tt.body)))
 			if err != nil {
 				t.Fatalf("failed to create request: %v", err)
 			}

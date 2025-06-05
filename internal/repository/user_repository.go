@@ -5,7 +5,7 @@ import (
 	"assignment/internal/infrastructure/database/models"
 	"context"
 	"database/sql"
-	"errors"
+	"fmt"
 
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -56,7 +56,7 @@ func (r *userRepository) CreateFriendship(user1Email, user2Email string) error {
 		return err
 	}
 	if exists {
-		return errors.New("friendship already exists")
+		return fmt.Errorf("friendship already created between %s and %s", user1Email, user2Email)
 	}
 
 	friend := &models.Friend{

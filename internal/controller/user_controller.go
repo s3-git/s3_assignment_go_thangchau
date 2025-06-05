@@ -16,7 +16,7 @@ func NewUserController(userRepo interfaces.UserRepositoryInterface) interfaces.U
 	}
 }
 
-func (c *userController) CreateFriendships(user1Email, user2Email string) error {
+func (c *userController) CreateFriendship(user1Email, user2Email string) error {
     if user1Email == user2Email {
         return errors.New("cannot befriend self")
     }
