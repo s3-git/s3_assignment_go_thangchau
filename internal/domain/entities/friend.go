@@ -1,9 +1,9 @@
 package entities
 
 import (
+	"assignment/pkg/utils"
 	"errors"
 	"fmt"
-	"regexp"
 	"strings"
 )
 
@@ -35,16 +35,10 @@ func (r *CreateFriendshipRequest) Validate() error {
 
 	// Email format validation
 	for _, email := range r.Friends {
-		if !isValidEmail(email) {
+		if utils.ValidateEmail(email) {
 			return fmt.Errorf("invalid email format: %s", email)
 		}
 	}
 
 	return nil
-}
-
-func isValidEmail(email string) bool {
-	emailRegex := `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`
-	matched, _ := regexp.MatchString(emailRegex, email)
-	return matched && len(email) <= 254
 }
