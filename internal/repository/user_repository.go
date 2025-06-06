@@ -3,9 +3,9 @@ package repository
 import (
 	"assignment/internal/domain/interfaces"
 	"assignment/internal/infrastructure/database/models"
+	"assignment/pkg/errors"
 	"context"
 	"database/sql"
-	"fmt"
 
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
@@ -19,14 +19,17 @@ func NewUserRepository(db *sql.DB) interfaces.UserRepositoryInterface {
 	return &userRepository{db: db}
 }
 
-func (r *userRepository) CreateFriendship(user1Email, user2Email string) error {//TODO: some error status cannot be 500
+func (r *userRepository) CreateFriendship(user1Email, user2Email string) error {
 	// Get first user's ID
 	user1, err := models.Users(
 		qm.Select(models.UserColumns.ID),
 		models.UserWhere.Email.EQ(user1Email),
 	).One(context.Background(), r.db)
 	if err != nil {
-		return err
+		if err == sql.ErrNoRows {
+			return errors.Newf(errors.ErrorTypeNotFound, "User with email '%s' not found", user1Email)
+		}
+		return errors.Wrap(err, errors.ErrorTypeDatabase, "Failed to fetch first user")
 	}
 
 	// Get second user's ID
@@ -35,7 +38,10 @@ func (r *userRepository) CreateFriendship(user1Email, user2Email string) error {
 		models.UserWhere.Email.EQ(user2Email),
 	).One(context.Background(), r.db)
 	if err != nil {
-		return err
+		if err == sql.ErrNoRows {
+			return errors.Newf(errors.ErrorTypeNotFound, "User with email '%s' not found", user2Email)
+		}
+		return errors.Wrap(err, errors.ErrorTypeDatabase, "Failed to fetch second user")
 	}
 
 	firstUserID := user1.ID
@@ -53,10 +59,10 @@ func (r *userRepository) CreateFriendship(user1Email, user2Email string) error {
 		models.FriendWhere.User2ID.EQ(secondUserID),
 	).Exists(context.Background(), r.db)
 	if err != nil {
-		return err
+		return errors.Wrap(err, errors.ErrorTypeDatabase, "Failed to check existing friendship")
 	}
 	if exists {
-		return fmt.Errorf("friendship already created between %s and %s", user1Email, user2Email)
+		return errors.ErrAlreadyFriends
 	}
 
 	friend := &models.Friend{
@@ -66,7 +72,7 @@ func (r *userRepository) CreateFriendship(user1Email, user2Email string) error {
 
 	err = friend.Insert(context.Background(), r.db, boil.Infer())
 	if err != nil {
-		return err
+		return errors.FromError(err)
 	}
 
 	return nil

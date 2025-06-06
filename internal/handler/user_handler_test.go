@@ -2,8 +2,8 @@ package handler
 
 import (
 	"assignment/internal/domain/interfaces"
+	"assignment/pkg/errors"
 	"bytes"
-	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -20,6 +20,10 @@ func (m *mockUserController) CreateFriendship(u1, u2 string) error {
 	if m.createFriendshipsFunc != nil {
 		return m.createFriendshipsFunc(u1, u2)
 	}
+	return nil
+}
+
+func (m *mockUserController) GetFriendList(email string) error {
 	return nil
 }
 
@@ -40,32 +44,50 @@ func TestCreateFriendships(t *testing.T) {
 				return nil
 			},
 			expectedStatus: http.StatusCreated,
-			expectedBody:   `{"success":true}`,
+			expectedBody:   `{"success":true,"message":"Friendship created successfully"}`,
 		},
 		{
-			name: "missing email",
+			name: "missing email validation",
 			body: `{"friends":["andy@example.com"]}`,
 			mockFunc: func(u1, u2 string) error {
-				return errors.New("invalid body")
+				return errors.New(errors.ErrorTypeValidation, "invalid body")
 			},
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   `{"error": {"friends":"exactly 2 friends required"}}`,
+			expectedBody:   `{"success":false,"error":{"type":"VALIDATION_ERROR","message":"Validation failed","details":"emails count: exactly 2 emails required"}}`,
 		},
 		{
-			name: "internal server error",
+			name: "business logic error - already friends",
 			body: `{"friends":["andy@example.com", "john@example.com"]}`,
 			mockFunc: func(u1, u2 string) error {
-				return errors.New("internal server error")
+				return errors.ErrAlreadyFriends
 			},
-			expectedStatus: http.StatusInternalServerError,
-			expectedBody:   `{"error":"internal server error"}`,
+			expectedStatus: http.StatusConflict,
+			expectedBody:   `{"success":false,"error":{"type":"CONFLICT","message":"Users are already friends"}}`,
+		},
+		{
+			name: "user not found error",
+			body: `{"friends":["andy@example.com", "john@example.com"]}`,
+			mockFunc: func(u1, u2 string) error {
+				return errors.Newf(errors.ErrorTypeNotFound, "User with email '%s' not found", "andy@example.com")
+			},
+			expectedStatus: http.StatusNotFound,
+			expectedBody:   `{"success":false,"error":{"type":"NOT_FOUND","message":"User with email 'andy@example.com' not found"}}`,
+		},
+		{
+			name: "cannot friend self",
+			body: `{"friends":["andy@example.com", "john@example.com"]}`,
+			mockFunc: func(u1, u2 string) error {
+				return errors.ErrCannotFriendSelf
+			},
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   `{"success":false,"error":{"type":"BUSINESS_ERROR","message":"Cannot add yourself as a friend"}}`,
 		},
 		{
 			name:           "invalid json",
 			body:           `{"friends": [}`,
 			mockFunc:       nil,
 			expectedStatus: http.StatusBadRequest,
-			expectedBody:   `{"error":"invalid request"}`,
+			expectedBody:   `{"success":false,"error":{"type":"VALIDATION_ERROR","message":"Invalid request format","details":"invalid character '}' looking for beginning of value"}}`,
 		},
 	}
 

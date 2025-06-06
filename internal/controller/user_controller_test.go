@@ -1,7 +1,8 @@
 package controller
 
 import (
-	"errors"
+	"assignment/pkg/errors"
+	stderrors "errors"
 	"testing"
 )
 
@@ -19,27 +20,31 @@ func (m *mockUserRepo) CreateFriendship(u1, u2 string) error {
 
 func TestCreateFriendships(t *testing.T) {
 	tests := []struct {
-		name       string
-		user1Email string
-		user2Email string
-		mockFunc   func(user1Email, user2Email string) error
-		wantErr    string
+		name         string
+		user1Email   string
+		user2Email   string
+		mockFunc     func(user1Email, user2Email string) error
+		wantErr      bool
+		wantErrType  errors.ErrorType
+		wantErrMsg   string
 	}{
 		{
-			name:       "same email",
-			user1Email: "a@mail.com",
-			user2Email: "a@mail.com",
+			name:       "successful friendship creation",
+			user1Email: "a@example.com",
+			user2Email: "b@example.com",
 			mockFunc:   nil,
-			wantErr:    "cannot befriend self",
+			wantErr:    false,
 		},
 		{
 			name:       "repo error",
 			user1Email: "a@example.com",
 			user2Email: "b@example.com",
 			mockFunc: func(user1Email, user2Email string) error {
-				return errors.New("repo error")
+				return errors.New(errors.ErrorTypeDatabase, "database connection failed")
 			},
-			wantErr: "repo error",
+			wantErr:     true,
+			wantErrType: errors.ErrorTypeDatabase,
+			wantErrMsg:  "database connection failed",
 		},
 	}
 
@@ -50,14 +55,30 @@ func TestCreateFriendships(t *testing.T) {
 
 			err := controller.CreateFriendship(tt.user1Email, tt.user2Email)
 
-			if tt.wantErr == "" {
+			if !tt.wantErr {
 				if err != nil {
 					t.Errorf("expected no error, got %v", err)
 				}
-			} else {
-				if err == nil || err.Error() != tt.wantErr {
-					t.Errorf("expected error '%s', got %v", tt.wantErr, err)
-				}
+				return
+			}
+
+			if err == nil {
+				t.Errorf("expected error, got nil")
+				return
+			}
+
+			var appErr *errors.AppError
+			if !stderrors.As(err, &appErr) {
+				t.Errorf("expected AppError, got %T", err)
+				return
+			}
+
+			if appErr.Type != tt.wantErrType {
+				t.Errorf("expected error type %s, got %s", tt.wantErrType, appErr.Type)
+			}
+
+			if appErr.Message != tt.wantErrMsg {
+				t.Errorf("expected error message '%s', got '%s'", tt.wantErrMsg, appErr.Message)
 			}
 		})
 	}
