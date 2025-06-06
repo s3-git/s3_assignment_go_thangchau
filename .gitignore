@@ -71,3 +71,5 @@ coverage.html
 
 # Local development files
 .local/
+
+CLAUDE.md

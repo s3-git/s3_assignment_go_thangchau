@@ -197,3 +197,7 @@ Git and Commit History
 Sync your app to GitHub and provide the link to the repository to SP.
 Please maintain a descriptive and clear Git commit history as it would allow us to
 better understand your thought process.
+
+## instructions
+
+Remember to remove any file you generated after you are done with it
