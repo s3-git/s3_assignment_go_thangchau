@@ -1,6 +1,7 @@
 package main
 
 import (
+	"assignment/internal/config"
 	"assignment/internal/controller"
 	"assignment/internal/handler"
 	"assignment/internal/repository"
@@ -14,10 +15,10 @@ import (
 
 func main() {
 	// Load config
-	//cfg := config.Load()
+	cfg := config.Load()
 
 	// Initialize database
-	db, err := initDB()
+	db, err := initDB(cfg)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -34,18 +35,16 @@ func main() {
 	handler.SetupRoutes(r, controllers)
 
 	// Start server
-	r.Run(":8080")
+	r.Run(":" + cfg.Server.Port)
 }
 
-func initDB() (*sql.DB, error) {
-	//TODO: read from config env var
-	db, err := sql.Open("postgres", "host=postgres port=5432 user=postgres password=password dbname=assignment-db sslmode=disable")
+func initDB(cfg *config.Config) (*sql.DB, error) {
+	db, err := sql.Open("postgres", cfg.DatabaseURL())
 	if err != nil {
 		return nil, err
 	}
 
 	// Test connection
-	// TODO: retry
 	if err := db.Ping(); err != nil {
 		return nil, err
 	}

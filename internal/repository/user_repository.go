@@ -20,59 +20,73 @@ func NewUserRepository(db *sql.DB) interfaces.UserRepositoryInterface {
 }
 
 func (r *userRepository) CreateFriendship(user1Email, user2Email string) error {
-	// Get first user's ID
-	user1, err := models.Users(
-		qm.Select(models.UserColumns.ID),
-		models.UserWhere.Email.EQ(user1Email),
-	).One(context.Background(), r.db)
+	// Begin transaction
+	tx, err := r.db.BeginTx(context.Background(), nil)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return errors.Newf(errors.ErrorTypeNotFound, "User with email '%s' not found", user1Email)
+		return errors.Wrap(err, errors.ErrorTypeDatabase, "Failed to begin transaction")
+	}
+	defer func() {
+		if err != nil {
+			tx.Rollback()
 		}
-		return errors.Wrap(err, errors.ErrorTypeDatabase, "Failed to fetch first user")
+	}()
+
+	// Get both users' IDs
+	users, err := models.Users(
+		qm.Select(models.UserColumns.ID, models.UserColumns.Email),
+		models.UserWhere.Email.IN([]string{user1Email, user2Email}),
+	).All(context.Background(), tx)
+	if err != nil {
+		return errors.Wrap(err, errors.ErrorTypeDatabase, "Failed to fetch users")
 	}
 
-	// Get second user's ID
-	user2, err := models.Users(
-		qm.Select(models.UserColumns.ID),
-		models.UserWhere.Email.EQ(user2Email),
-	).One(context.Background(), r.db)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return errors.Newf(errors.ErrorTypeNotFound, "User with email '%s' not found", user2Email)
+	// Check that both users exist
+	if len(users) != 2 {
+		var missingEmails []string
+		foundEmails := make(map[string]bool)
+		for _, user := range users {
+			foundEmails[user.Email] = true
 		}
-		return errors.Wrap(err, errors.ErrorTypeDatabase, "Failed to fetch second user")
+		if !foundEmails[user1Email] {
+			missingEmails = append(missingEmails, user1Email)
+		}
+		if !foundEmails[user2Email] {
+			missingEmails = append(missingEmails, user2Email)
+		}
+		return errors.Newf(errors.ErrorTypeNotFound, "User(s) not found: %v", missingEmails)
 	}
 
-	firstUserID := user1.ID
-	secondUserID := user2.ID
-
-	// Check which ID is smaller
-	if user1.ID > user2.ID {
-		firstUserID = user2.ID
-		secondUserID = user1.ID
+	// Map emails to user IDs
+	userIDMap := make(map[string]int)
+	for _, user := range users {
+		userIDMap[user.Email] = user.ID
 	}
 
-	// Check if already friends
-	exists, err := models.Friends(
-		models.FriendWhere.User1ID.EQ(firstUserID),
-		models.FriendWhere.User2ID.EQ(secondUserID),
-	).Exists(context.Background(), r.db)
-	if err != nil {
-		return errors.Wrap(err, errors.ErrorTypeDatabase, "Failed to check existing friendship")
-	}
-	if exists {
-		return errors.ErrAlreadyFriends
+	user1ID := userIDMap[user1Email]
+	user2ID := userIDMap[user2Email]
+
+	// Ensure consistent ordering (smaller ID first)
+	firstUserID := user1ID
+	secondUserID := user2ID
+	if user1ID > user2ID {
+		firstUserID = user2ID
+		secondUserID = user1ID
 	}
 
+	// Try to insert friendship directly - let database constraint handle duplicates
 	friend := &models.Friend{
 		User1ID: firstUserID,
 		User2ID: secondUserID,
 	}
 
-	err = friend.Insert(context.Background(), r.db, boil.Infer())
+	err = friend.Insert(context.Background(), tx, boil.Infer())
 	if err != nil {
 		return errors.FromError(err)
+	}
+
+	// Commit transaction
+	if err = tx.Commit(); err != nil {
+		return errors.Wrap(err, errors.ErrorTypeDatabase, "Failed to commit transaction")
 	}
 
 	return nil

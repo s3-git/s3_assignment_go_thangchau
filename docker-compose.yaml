@@ -3,9 +3,9 @@ services:
     image: postgres:15-alpine
     container_name: postgres_db
     environment:
-      POSTGRES_DB: assignment-db
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     ports:
       - "5432:5432"
     volumes:
@@ -26,13 +26,16 @@ services:
     container_name: assignment
     environment:
       - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_NAME=assignment-db
-      - DB_USER=postgres
-      - DB_PASSWORD=password
-      - PORT=8080
+      - DB_PORT=${DB_PORT}
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - PORT=${PORT}
     ports:
       - "8080:8080"
+    volumes:
+      - .:/app
+      - /app/tmp
     depends_on:
       postgres:
         condition: service_healthy
