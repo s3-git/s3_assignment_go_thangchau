@@ -1,0 +1,80 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: postgres_db_prod
+    environment:
+      POSTGRES_DB: ${DB_NAME:-assignment-db}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Database password must be set}
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - app-network
+    restart: always
+    # Security: Don't expose database port in production
+    expose:
+      - "5432"
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: assignment_prod
+    environment:
+      - APP_ENV=production
+      - APP_DEBUG=false
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=${DB_NAME:-assignment-db}
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:?Database password must be set}
+      - DB_SSL_MODE=${DB_SSL_MODE:-require}
+      - SERVER_HOST=0.0.0.0
+      - SERVER_PORT=8080
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - LOG_FORMAT=json
+      - LOG_OUTPUT=stdout
+      - CORS_ENABLED=${CORS_ENABLED:-false}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-}
+      - RATE_LIMIT_ENABLED=${RATE_LIMIT_ENABLED:-true}
+      - RATE_LIMIT_REQUESTS_PER_MINUTE=${RATE_LIMIT_REQUESTS_PER_MINUTE:-60}
+    ports:
+      - "${SERVER_PORT:-8080}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: always
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    # Security: Run as non-root user
+    user: "1000:1000"
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+
+volumes:
+  postgres_prod_data:
+
+networks:
+  app-network:
+    driver: bridge
