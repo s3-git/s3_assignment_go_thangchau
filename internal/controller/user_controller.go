@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"assignment/internal/domain/entities"
 	"assignment/internal/domain/interfaces"
 	"assignment/pkg/errors"
 )
@@ -21,9 +22,41 @@ func (c *userController) CreateFriendship(user1Email, user2Email string) error {
 		return errors.ErrCannotFriendSelf
 	}
 
-	return c.userRepo.CreateFriendship(user1Email, user2Email)
+	// Get users from repository
+	user1, err := c.userRepo.GetUserByEmail(user1Email)
+	if err != nil {
+		return err
+	}
+
+	user2, err := c.userRepo.GetUserByEmail(user2Email)
+	if err != nil {
+		return err
+	}
+
+	return c.userRepo.CreateFriendship(user1, user2)
 }
 
-func (c *userController) GetFriendList(email string) error {
+func (c *userController) GetFriendList(email string) ([]*entities.User, error) {
+	// TODO: Implement friend list business logic
+	return nil, nil
+}
+
+func (c *userController) GetCommonFriends(email1, email2 string) ([]*entities.User, error) {
+	// TODO: Implement common friends business logic
+	return nil, nil
+}
+
+func (c *userController) CreateSubscription(requestorEmail, targetEmail string) error {
+	// TODO: Implement subscription business logic
 	return nil
+}
+
+func (c *userController) CreateBlock(requestorEmail, targetEmail string) error {
+	// TODO: Implement block business logic
+	return nil
+}
+
+func (c *userController) GetRecipients(senderEmail, text string) ([]*entities.User, error) {
+	// TODO: Implement recipients business logic
+	return nil, nil
 }

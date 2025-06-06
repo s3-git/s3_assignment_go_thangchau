@@ -1,14 +1,14 @@
 package interfaces
 
-//import "assignment/internal/domain"
+import "assignment/internal/domain/entities"
 
 type UserControllerInterface interface {
     CreateFriendship(user1Email, user2Email string) error
-    //GetFriendList(userID int) ([]*domain.User, error)
-    //GetCommonFriends(userID1, userID2 int) ([]*domain.User, error)
-    //Subscription(userID, targetID int) error
-    //Block(userID, targetID int) error
-    //GetRecipients(userID int) ([]*domain.User, error)
+    GetFriendList(email string) ([]*entities.User, error)
+    GetCommonFriends(email1, email2 string) ([]*entities.User, error)
+    CreateSubscription(requestorEmail, targetEmail string) error
+    CreateBlock(requestorEmail, targetEmail string) error
+    GetRecipients(senderEmail, text string) ([]*entities.User, error)
 }
 
 type Controllers interface {

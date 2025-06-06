@@ -1,10 +1,8 @@
 package handler
 
 import (
-	"assignment/internal/domain/entities"
 	"assignment/internal/domain/interfaces"
 	"assignment/pkg/errors"
-	"assignment/pkg/response"
 	"assignment/pkg/validator"
 
 	"github.com/gin-gonic/gin"
@@ -21,14 +19,14 @@ func NewUserHandler(userController interfaces.UserControllerInterface) *UserHand
 }
 
 func (h *UserHandler) CreateFriendships(c *gin.Context) {
-	var req entities.CreateFriendshipRequest
+	var req CreateFriendshipRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		errors.SendBadRequest(c, "Invalid request format", err.Error())
 		return
 	}
 
 	v := validator.New()
-	if entities.ValidateCreateFriendshipRequest(v, &req); !v.Valid() {
+	if ValidateCreateFriendshipRequest(v, &req); !v.Valid() {
 		errors.HandleValidationErrors(c, v.Errors)
 		return
 	}
@@ -38,22 +36,30 @@ func (h *UserHandler) CreateFriendships(c *gin.Context) {
 		return
 	}
 
-	response.SendCreated(c, nil, "Friendship created successfully")
+	c.JSON(200, gin.H{"success": true})
 }
 
 func (h *UserHandler) GetFriendList(c *gin.Context) {
-	var req entities.GetFriendListRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		errors.SendBadRequest(c, "Invalid request format", err.Error())
-		return
-	}
+	// TODO: Implement friend list handler
+	c.JSON(501, gin.H{"error": "Not implemented"})
+}
 
-	v := validator.New()
-	if entities.ValidateGetFriendlistRequest(v, &req); !v.Valid() {
-		errors.HandleValidationErrors(c, v.Errors)
-		return
-	}
+func (h *UserHandler) GetCommonFriends(c *gin.Context) {
+	// TODO: Implement common friends handler
+	c.JSON(501, gin.H{"error": "Not implemented"})
+}
 
-	// TODO: Implement actual friend list retrieval
-	response.SendSuccess(c, nil, "Friend list retrieved successfully")
+func (h *UserHandler) CreateSubscription(c *gin.Context) {
+	// TODO: Implement subscription handler
+	c.JSON(501, gin.H{"error": "Not implemented"})
+}
+
+func (h *UserHandler) CreateBlock(c *gin.Context) {
+	// TODO: Implement block handler
+	c.JSON(501, gin.H{"error": "Not implemented"})
+}
+
+func (h *UserHandler) GetRecipients(c *gin.Context) {
+	// TODO: Implement recipients handler
+	c.JSON(501, gin.H{"error": "Not implemented"})
 }

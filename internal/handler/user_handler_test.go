@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"assignment/internal/domain/entities"
 	"assignment/internal/domain/interfaces"
 	"assignment/pkg/errors"
 	"bytes"
@@ -23,8 +24,24 @@ func (m *mockUserController) CreateFriendship(u1, u2 string) error {
 	return nil
 }
 
-func (m *mockUserController) GetFriendList(email string) error {
+func (m *mockUserController) GetFriendList(email string) ([]*entities.User, error) {
+	return []*entities.User{}, nil
+}
+
+func (m *mockUserController) GetCommonFriends(email1, email2 string) ([]*entities.User, error) {
+	return []*entities.User{}, nil
+}
+
+func (m *mockUserController) CreateSubscription(requestorEmail, targetEmail string) error {
 	return nil
+}
+
+func (m *mockUserController) CreateBlock(requestorEmail, targetEmail string) error {
+	return nil
+}
+
+func (m *mockUserController) GetRecipients(senderEmail, text string) ([]*entities.User, error) {
+	return []*entities.User{}, nil
 }
 
 func TestCreateFriendships(t *testing.T) {
@@ -43,8 +60,8 @@ func TestCreateFriendships(t *testing.T) {
 			mockFunc: func(u1, u2 string) error {
 				return nil
 			},
-			expectedStatus: http.StatusCreated,
-			expectedBody:   `{"success":true,"message":"Friendship created successfully"}`,
+			expectedStatus: http.StatusOK,
+			expectedBody:   `{"success":true}`,
 		},
 		{
 			name: "missing email validation",

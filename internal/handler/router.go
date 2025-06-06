@@ -17,10 +17,10 @@ func SetupRoutes(r *gin.Engine, controllers interfaces.Controllers) {
 		{
 			users.POST("/friends", handlers.UserHandler.CreateFriendships)
 			users.POST("/friends/list", handlers.UserHandler.GetFriendList)
-			// users.POST("/friends/common", controllers.UserController.GetCommonFriends)
-			// users.POST("/subscriptions", controllers.UserController.Subscription)
-			// users.POST("/blocks", controllers.UserController.Block)
-			// users.POST("/recipients", controllers.UserController.Recipients)
+			users.POST("/friends/common", handlers.UserHandler.GetCommonFriends)
+			users.POST("/subscriptions", handlers.UserHandler.CreateSubscription)
+			users.POST("/blocks", handlers.UserHandler.CreateBlock)
+			users.POST("/recipients", handlers.UserHandler.GetRecipients)
 		}
 	}
 }

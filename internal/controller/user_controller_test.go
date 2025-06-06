@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"assignment/internal/domain/entities"
 	"assignment/pkg/errors"
 	stderrors "errors"
 	"testing"
@@ -8,14 +9,46 @@ import (
 
 // mockUserRepo implements interfaces.UserRepositoryInterface for testing
 type mockUserRepo struct {
-	createFriendshipFunc func(user1Email, user2Email string) error
+	createFriendshipFunc func(user1, user2 *entities.User) error
+	getUserByEmailFunc   func(email string) (*entities.User, error)
 }
 
-func (m *mockUserRepo) CreateFriendship(u1, u2 string) error {
+func (m *mockUserRepo) CreateFriendship(user1, user2 *entities.User) error {
 	if m.createFriendshipFunc != nil {
-		return m.createFriendshipFunc(u1, u2)
+		return m.createFriendshipFunc(user1, user2)
 	}
 	return nil
+}
+
+func (m *mockUserRepo) GetFriendList(user *entities.User) ([]*entities.User, error) {
+	return []*entities.User{}, nil
+}
+
+func (m *mockUserRepo) GetCommonFriends(user1, user2 *entities.User) ([]*entities.User, error) {
+	return []*entities.User{}, nil
+}
+
+func (m *mockUserRepo) CreateSubscription(requestor, target *entities.User) error {
+	return nil
+}
+
+func (m *mockUserRepo) CreateBlock(requestor, target *entities.User) error {
+	return nil
+}
+
+func (m *mockUserRepo) GetRecipients(sender *entities.User, mentionedUsers []*entities.User) ([]*entities.User, error) {
+	return []*entities.User{}, nil
+}
+
+func (m *mockUserRepo) UserExists(email string) (*entities.User, error) {
+	return &entities.User{ID: 1, Email: email}, nil
+}
+
+func (m *mockUserRepo) GetUserByEmail(email string) (*entities.User, error) {
+	if m.getUserByEmailFunc != nil {
+		return m.getUserByEmailFunc(email)
+	}
+	return &entities.User{ID: 1, Email: email}, nil
 }
 
 func TestCreateFriendships(t *testing.T) {
@@ -23,7 +56,7 @@ func TestCreateFriendships(t *testing.T) {
 		name         string
 		user1Email   string
 		user2Email   string
-		mockFunc     func(user1Email, user2Email string) error
+		mockFunc     func(user1, user2 *entities.User) error
 		wantErr      bool
 		wantErrType  errors.ErrorType
 		wantErrMsg   string
@@ -39,7 +72,7 @@ func TestCreateFriendships(t *testing.T) {
 			name:       "repo error",
 			user1Email: "a@example.com",
 			user2Email: "b@example.com",
-			mockFunc: func(user1Email, user2Email string) error {
+			mockFunc: func(user1, user2 *entities.User) error {
 				return errors.New(errors.ErrorTypeDatabase, "database connection failed")
 			},
 			wantErr:     true,
