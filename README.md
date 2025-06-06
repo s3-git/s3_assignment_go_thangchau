@@ -1,6 +1,17 @@
-# Assignment API
+# Friends Management API
 
-Friends Management REST API using Go and Postgresql
+A REST API for managing user relationships including friendships, subscriptions, and blocking functionality. Built with Go, Gin, PostgreSQL, and SQLBoiler following Clean Architecture principles.
+
+## Features
+
+- Create and manage friend connections between users
+- Subscribe to updates from other users
+- Block users to prevent friend connections and updates
+- Retrieve friends lists and common friends
+- Get eligible recipients for user updates (mentions, friends, subscribers)
+- Type-safe database operations with SQLBoiler
+- Hot reload development environment with Air
+- Comprehensive test coverage
 
 ## Prerequisites
 
@@ -85,19 +96,31 @@ PORT=8080
 ## Project Structure
 
 ```
-├── cmd/api/              # Application entry point
-├── internal/
-│   ├── config/           # Configuration management
-│   ├── controller/       # Business logic layer
-│   ├── domain/           # Domain entities and interfaces
-│   ├── handler/          # HTTP handlers and routing
-│   ├── infrastructure/   # Database models and external dependencies
-│   └── repository/       # Data access layer
-├── migrations/           # Database migrations
-├── pkg/                  # Shared utilities
-├── .air.toml            # Air configuration for hot reload
-├── docker-compose.yaml  # Docker services definition
-└── Dockerfile          # Container definition
+├── cmd/api/                    # Application entry point
+├── internal/                   # Private application code
+│   ├── config/                 # Configuration management
+│   ├── controller/             # Business logic layer (use cases)
+│   ├── domain/                 # Core business entities and interfaces
+│   │   ├── entities/           # Domain entities (User, Friend, etc.)
+│   │   └── interfaces/         # Repository and controller interfaces
+│   ├── handler/                # HTTP presentation layer (Gin routes)
+│   ├── infrastructure/         # External dependencies
+│   │   └── database/models/    # SQLBoiler generated models
+│   └── repository/             # Data access implementations
+├── migrations/                 # Database schema migrations
+├── pkg/                        # Shared utilities and packages
+│   ├── errors/                 # Error handling utilities
+│   ├── response/               # Response formatting
+│   ├── utils/                  # General utilities
+│   └── validator/              # Input validation
+├── sqlboiler_config/           # SQLBoiler configuration
+├── tmp/                        # Temporary build files
+├── CLAUDE.md                   # Project guidance for AI assistants
+├── Dockerfile                  # Container definition
+├── Makefile                    # Build and development commands
+├── docker-compose.yaml         # Docker services definition
+├── go.mod                      # Go module definition
+└── go.sum                      # Go module checksums
 ```
 
 ## Development Workflow
