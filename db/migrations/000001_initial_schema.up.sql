@@ -75,14 +75,3 @@ CREATE TABLE blocks (
 -- Indexes for faster block lookups
 CREATE INDEX idx_blocks_blocker ON blocks(blocker_id);
 CREATE INDEX idx_blocks_blocked ON blocks(blocked_id);
-
--- Add data
-INSERT INTO users (email) VALUES('andy@mail.com');
-
-INSERT INTO users (email) VALUES('alice@mail.com');
-
-INSERT INTO users (email) VALUES('bob@mail.com');
-
-INSERT INTO users (email) VALUES('jack@mail.com');
-
-INSERT INTO users (email) VALUES('lisa@mail.com');

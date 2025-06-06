@@ -4,6 +4,7 @@ import (
 	"assignment/internal/config"
 	"assignment/internal/controller"
 	"assignment/internal/handler"
+	"assignment/internal/infrastructure/database/migration"
 	"assignment/internal/repository"
 	"database/sql"
 	"log"
@@ -21,6 +22,12 @@ func main() {
 	db, err := initDB(cfg)
 	if err != nil {
 		log.Fatal(err)
+	}
+
+	// Run migrations
+	migrationsPath := "db/migrations"
+	if err := migration.RunMigrations(db, migrationsPath); err != nil {
+		log.Fatal("Failed to run migrations:", err)
 	}
 
 	// Set the global database connection for SQLBoiler

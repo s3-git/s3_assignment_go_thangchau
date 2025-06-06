@@ -32,3 +32,16 @@ air:
 
 gensql:
 	cd sqlboiler_config && sqlboiler psql -o ../internal/infrastructure/database/models
+
+# Migration commands
+migrate-up:
+	migrate -path db/migrations -database "postgres://postgres:password@localhost:5432/assignment?sslmode=disable" up
+
+migrate-down:
+	migrate -path db/migrations -database "postgres://postgres:password@localhost:5432/assignment?sslmode=disable" down
+
+migrate-create:
+	migrate create -ext sql -dir db/migrations -seq $(name)
+
+migrate-force:
+	migrate -path db/migrations -database "postgres://postgres:password@localhost:5432/assignment?sslmode=disable" force $(version)
