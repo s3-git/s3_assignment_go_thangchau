@@ -258,11 +258,12 @@ var (
 
 // Business logic errors
 var (
-	ErrCannotFriendSelf     = New(ErrorTypeBusiness, "Cannot add yourself as a friend")
-	ErrCannotBlockSelf      = New(ErrorTypeBusiness, "Cannot block yourself")
-	ErrCannotSubscribeSelf  = New(ErrorTypeBusiness, "Cannot subscribe to yourself")
-	ErrAlreadyFriends       = New(ErrorTypeConflict, "Users are already friends")
-	ErrAlreadyBlocked       = New(ErrorTypeConflict, "User is already blocked")
-	ErrAlreadySubscribed    = New(ErrorTypeConflict, "Already subscribed to user")
-	ErrUserBlocked          = New(ErrorTypeForbidden, "Cannot perform action on blocked user")
+	ErrCannotFriendSelf              = New(ErrorTypeBusiness, "Cannot add yourself as a friend")
+	ErrCannotBlockSelf               = New(ErrorTypeBusiness, "Cannot block yourself")
+	ErrCannotSubscribeSelf           = New(ErrorTypeBusiness, "Cannot subscribe to yourself")
+	ErrCannotGetCommonFriendsWithSelf = New(ErrorTypeBusiness, "Cannot get common friends with yourself")
+	ErrAlreadyFriends                = New(ErrorTypeConflict, "Users are already friends")
+	ErrAlreadyBlocked                = New(ErrorTypeConflict, "User is already blocked")
+	ErrAlreadySubscribed             = New(ErrorTypeConflict, "Already subscribed to user")
+	ErrUserBlocked                   = New(ErrorTypeForbidden, "Cannot perform action on blocked user")
 )

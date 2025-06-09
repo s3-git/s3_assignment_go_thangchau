@@ -46,8 +46,23 @@ func (c *userController) GetFriendList(email string) ([]*entities.User, error) {
 }
 
 func (c *userController) GetCommonFriends(email1, email2 string) ([]*entities.User, error) {
-	// TODO: Implement common friends business logic
-	return nil, nil
+	// Check for same user
+	if email1 == email2 {
+		return nil, errors.ErrCannotGetCommonFriendsWithSelf
+	}
+
+	// Get users from repository
+	user1, err := c.userRepo.GetUserByEmail(email1)
+	if err != nil {
+		return nil, err
+	}
+
+	user2, err := c.userRepo.GetUserByEmail(email2)
+	if err != nil {
+		return nil, err
+	}
+
+	return c.userRepo.GetCommonFriends(user1, user2)
 }
 
 func (c *userController) CreateSubscription(requestorEmail, targetEmail string) error {
@@ -64,3 +79,4 @@ func (c *userController) GetRecipients(senderEmail, text string) ([]*entities.Us
 	// TODO: Implement recipients business logic
 	return nil, nil
 }
+ 

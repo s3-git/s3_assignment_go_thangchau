@@ -9,9 +9,10 @@ import (
 
 // mockUserRepo implements interfaces.UserRepositoryInterface for testing
 type mockUserRepo struct {
-	createFriendshipFunc func(user1, user2 *entities.User) error
-	getUserByEmailFunc   func(email string) (*entities.User, error)
-	getFriendListFunc    func(user *entities.User) ([]*entities.User, error)
+	createFriendshipFunc  func(user1, user2 *entities.User) error
+	getUserByEmailFunc    func(email string) (*entities.User, error)
+	getFriendListFunc     func(user *entities.User) ([]*entities.User, error)
+	getCommonFriendsFunc  func(user1, user2 *entities.User) ([]*entities.User, error)
 }
 
 func (m *mockUserRepo) CreateFriendship(user1, user2 *entities.User) error {
@@ -29,6 +30,9 @@ func (m *mockUserRepo) GetFriendList(user *entities.User) ([]*entities.User, err
 }
 
 func (m *mockUserRepo) GetCommonFriends(user1, user2 *entities.User) ([]*entities.User, error) {
+	if m.getCommonFriendsFunc != nil {
+		return m.getCommonFriendsFunc(user1, user2)
+	}
 	return []*entities.User{}, nil
 }
 
@@ -71,6 +75,15 @@ func TestCreateFriendships(t *testing.T) {
 			user2Email: "b@example.com",
 			mockFunc:   nil,
 			wantErr:    false,
+		},
+		{
+			name:       "same email friendship should fail",
+			user1Email: "a@example.com",
+			user2Email: "a@example.com",
+			mockFunc:   nil,
+			wantErr:    true,
+			wantErrType: errors.ErrorTypeBusiness,
+			wantErrMsg: "Cannot add yourself as a friend",
 		},
 		{
 			name:       "repo error",
@@ -238,3 +251,176 @@ func TestGetFriendList(t *testing.T) {
 		})
 	}
 }
+
+func TestGetCommonFriends(t *testing.T) {
+	tests := []struct {
+		name                  string
+		email1                string
+		email2                string
+		getUserByEmailFunc    func(email string) (*entities.User, error)
+		getCommonFriendsFunc  func(user1, user2 *entities.User) ([]*entities.User, error)
+		wantErr               bool
+		wantErrType           errors.ErrorType
+		wantErrMsg            string
+		expectedCommonFriends []*entities.User
+	}{
+		{
+			name:   "successful common friends retrieval with common friends",
+			email1: "andy@example.com",
+			email2: "john@example.com",
+			getUserByEmailFunc: func(email string) (*entities.User, error) {
+				if email == "andy@example.com" {
+					return &entities.User{ID: 1, Email: "andy@example.com"}, nil
+				}
+				if email == "john@example.com" {
+					return &entities.User{ID: 2, Email: "john@example.com"}, nil
+				}
+				return nil, errors.Newf(errors.ErrorTypeNotFound, "User with email '%s' not found", email)
+			},
+			getCommonFriendsFunc: func(user1, user2 *entities.User) ([]*entities.User, error) {
+				return []*entities.User{
+					{ID: 3, Email: "jane@example.com"},
+					{ID: 4, Email: "bob@example.com"},
+				}, nil
+			},
+			wantErr: false,
+			expectedCommonFriends: []*entities.User{
+				{ID: 3, Email: "jane@example.com"},
+				{ID: 4, Email: "bob@example.com"},
+			},
+		},
+		{
+			name:   "successful common friends retrieval with no common friends",
+			email1: "andy@example.com",
+			email2: "john@example.com",
+			getUserByEmailFunc: func(email string) (*entities.User, error) {
+				if email == "andy@example.com" {
+					return &entities.User{ID: 1, Email: "andy@example.com"}, nil
+				}
+				if email == "john@example.com" {
+					return &entities.User{ID: 2, Email: "john@example.com"}, nil
+				}
+				return nil, errors.Newf(errors.ErrorTypeNotFound, "User with email '%s' not found", email)
+			},
+			getCommonFriendsFunc: func(user1, user2 *entities.User) ([]*entities.User, error) {
+				return []*entities.User{}, nil
+			},
+			wantErr:               false,
+			expectedCommonFriends: []*entities.User{},
+		},
+		{
+			name:                 "cannot get common friends with self",
+			email1:               "andy@example.com",
+			email2:               "andy@example.com",
+			getUserByEmailFunc:   nil,
+			getCommonFriendsFunc: nil,
+			wantErr:              true,
+			wantErrType:          errors.ErrorTypeBusiness,
+			wantErrMsg:           "Cannot get common friends with yourself",
+		},
+		{
+			name:   "first user not found",
+			email1: "nonexistent@example.com",
+			email2: "john@example.com",
+			getUserByEmailFunc: func(email string) (*entities.User, error) {
+				if email == "nonexistent@example.com" {
+					return nil, errors.Newf(errors.ErrorTypeNotFound, "User with email '%s' not found", email)
+				}
+				return &entities.User{ID: 2, Email: "john@example.com"}, nil
+			},
+			getCommonFriendsFunc: nil,
+			wantErr:              true,
+			wantErrType:          errors.ErrorTypeNotFound,
+			wantErrMsg:           "User with email 'nonexistent@example.com' not found",
+		},
+		{
+			name:   "second user not found",
+			email1: "andy@example.com",
+			email2: "nonexistent@example.com",
+			getUserByEmailFunc: func(email string) (*entities.User, error) {
+				if email == "andy@example.com" {
+					return &entities.User{ID: 1, Email: "andy@example.com"}, nil
+				}
+				if email == "nonexistent@example.com" {
+					return nil, errors.Newf(errors.ErrorTypeNotFound, "User with email '%s' not found", email)
+				}
+				return nil, errors.Newf(errors.ErrorTypeNotFound, "User with email '%s' not found", email)
+			},
+			getCommonFriendsFunc: nil,
+			wantErr:              true,
+			wantErrType:          errors.ErrorTypeNotFound,
+			wantErrMsg:           "User with email 'nonexistent@example.com' not found",
+		},
+		{
+			name:   "repository error when getting common friends",
+			email1: "andy@example.com",
+			email2: "john@example.com",
+			getUserByEmailFunc: func(email string) (*entities.User, error) {
+				if email == "andy@example.com" {
+					return &entities.User{ID: 1, Email: "andy@example.com"}, nil
+				}
+				if email == "john@example.com" {
+					return &entities.User{ID: 2, Email: "john@example.com"}, nil
+				}
+				return nil, errors.Newf(errors.ErrorTypeNotFound, "User with email '%s' not found", email)
+			},
+			getCommonFriendsFunc: func(user1, user2 *entities.User) ([]*entities.User, error) {
+				return nil, errors.New(errors.ErrorTypeDatabase, "database connection failed")
+			},
+			wantErr:     true,
+			wantErrType: errors.ErrorTypeDatabase,
+			wantErrMsg:  "database connection failed",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockRepo := &mockUserRepo{
+				getUserByEmailFunc:   tt.getUserByEmailFunc,
+				getCommonFriendsFunc: tt.getCommonFriendsFunc,
+			}
+			controller := NewUserController(mockRepo)
+
+			commonFriends, err := controller.GetCommonFriends(tt.email1, tt.email2)
+
+			if !tt.wantErr {
+				if err != nil {
+					t.Errorf("expected no error, got %v", err)
+					return
+				}
+
+				if len(commonFriends) != len(tt.expectedCommonFriends) {
+					t.Errorf("expected %d common friends, got %d", len(tt.expectedCommonFriends), len(commonFriends))
+					return
+				}
+
+				for i, expectedFriend := range tt.expectedCommonFriends {
+					if commonFriends[i].ID != expectedFriend.ID || commonFriends[i].Email != expectedFriend.Email {
+						t.Errorf("expected common friend %v, got %v", expectedFriend, commonFriends[i])
+					}
+				}
+				return
+			}
+
+			if err == nil {
+				t.Errorf("expected error, got nil")
+				return
+			}
+
+			var appErr *errors.AppError
+			if !stderrors.As(err, &appErr) {
+				t.Errorf("expected AppError, got %T", err)
+				return
+			}
+
+			if appErr.Type != tt.wantErrType {
+				t.Errorf("expected error type %s, got %s", tt.wantErrType, appErr.Type)
+			}
+
+			if appErr.Message != tt.wantErrMsg {
+				t.Errorf("expected error message '%s', got '%s'", tt.wantErrMsg, appErr.Message)
+			}
+		})
+	}
+}
+

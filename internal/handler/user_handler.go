@@ -73,8 +73,36 @@ func (h *UserHandler) GetFriendList(c *gin.Context) {
 }
 
 func (h *UserHandler) GetCommonFriends(c *gin.Context) {
-	// TODO: Implement common friends handler
-	c.JSON(501, gin.H{"error": "Not implemented"})
+	var req GetCommonFriendsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		errors.SendBadRequest(c, "Invalid request format", err.Error())
+		return
+	}
+
+	v := validator.New()
+	if ValidateGetCommonFriendsRequest(v, &req); !v.Valid() {
+		errors.HandleValidationErrors(c, v.Errors)
+		return
+	}
+
+	friends, err := h.userController.GetCommonFriends(req.Friends[0], req.Friends[1])
+	if err != nil {
+		errors.HandleError(c, err)
+		return
+	}
+
+	friendEmails := make([]string, len(friends))
+	for i, friend := range friends {
+		friendEmails[i] = friend.Email
+	}
+
+	response := CommonFriendsResponse{
+		Success: true,
+		Friends: friendEmails,
+		Count:   len(friendEmails),
+	}
+
+	c.JSON(200, response)
 }
 
 func (h *UserHandler) CreateSubscription(c *gin.Context) {

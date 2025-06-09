@@ -5,6 +5,7 @@ import (
 	"assignment/internal/domain/interfaces"
 	"assignment/internal/infrastructure/database/models"
 	"assignment/pkg/errors"
+	"assignment/pkg/utils"
 	"context"
 	"database/sql"
 
@@ -124,21 +125,43 @@ func (r *userRepository) GetFriendList(user *entities.User) ([]*entities.User, e
 		friends = append(friends, friend)
 	}
 
-	// Sort by email for consistent ordering
-	for i := range len(friends) - 1 {
-		for j := i + 1; j < len(friends); j++ {
-			if friends[i].Email > friends[j].Email {
-				friends[i], friends[j] = friends[j], friends[i]
-			}
-		}
-	}
+	// Sort friends by email using utility function
+	utils.SortUsersByEmail(friends)
 
 	return friends, nil
 }
 
 func (r *userRepository) GetCommonFriends(user1, user2 *entities.User) ([]*entities.User, error) {
-	// TODO: Implement common friends retrieval
-	return nil, nil
+	// Get friends of user1
+	user1Friends, err := r.GetFriendList(user1)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get friends of user2
+	user2Friends, err := r.GetFriendList(user2)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create a map of user1's friends for efficient lookup
+	user1FriendMap := make(map[string]*entities.User)
+	for _, friend := range user1Friends {
+		user1FriendMap[friend.Email] = friend
+	}
+
+	// Find common friends
+	var commonFriends []*entities.User
+	for _, friend := range user2Friends {
+		if _, exists := user1FriendMap[friend.Email]; exists {
+			commonFriends = append(commonFriends, friend)
+		}
+	}
+
+	// Sort common friends by email using utility function
+	utils.SortUsersByEmail(commonFriends)
+
+	return commonFriends, nil
 }
 
 func (r *userRepository) CreateSubscription(requestor, target *entities.User) error {

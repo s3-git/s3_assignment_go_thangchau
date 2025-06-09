@@ -221,7 +221,6 @@ func TestUserRepository_GetUserByEmail(t *testing.T) {
 	}
 }
 
-
 func TestUserRepository_GetFriendList(t *testing.T) {
 	db, cleanup := setupTestContainer(t)
 	defer cleanup()
@@ -369,6 +368,177 @@ func TestUserRepository_GetFriendList(t *testing.T) {
 			for _, friend := range friends {
 				if friend.ID == tt.user.ID {
 					t.Errorf("user %s found in their own friend list", tt.user.Email)
+				}
+			}
+		})
+	}
+}
+
+func TestUserRepository_GetCommonFriends(t *testing.T) {
+	db, cleanup := setupTestContainer(t)
+	defer cleanup()
+
+	repo := NewUserRepository(db)
+
+	// Setup test data: Create users and friendships
+	user1 := &entities.User{ID: 1, Email: "andy@mail.com"}    // andy
+	user2 := &entities.User{ID: 2, Email: "alice@mail.com"}   // alice
+	user3 := &entities.User{ID: 3, Email: "bob@mail.com"}     // bob
+	user4 := &entities.User{ID: 4, Email: "jack@mail.com"}    // jack
+	user5 := &entities.User{ID: 5, Email: "lisa@mail.com"}    // lisa
+
+	// Create additional test users
+	_, err := db.ExecContext(context.Background(), "INSERT INTO users (email) VALUES('charlie@mail.com'), ('diana@mail.com')")
+	if err != nil {
+		t.Fatalf("Failed to create test users: %v", err)
+	}
+	user6 := &entities.User{ID: 6, Email: "charlie@mail.com"}
+	user7 := &entities.User{ID: 7, Email: "diana@mail.com"}
+
+	// Create friendship network:
+	// andy (1) <-> alice (2), bob (3), jack (4), charlie (6)
+	// alice (2) <-> andy (1), bob (3), lisa (5), charlie (6)
+	// bob (3) <-> andy (1), alice (2), charlie (6)
+	// jack (4) <-> andy (1), alice (2)
+	// lisa (5) <-> alice (2)
+	// charlie (6) <-> andy (1), alice (2), bob (3)
+	// diana (7) has no friends
+	
+	friendships := [][2]*entities.User{
+		{user1, user2}, // andy <-> alice
+		{user1, user3}, // andy <-> bob
+		{user1, user4}, // andy <-> jack
+		{user1, user6}, // andy <-> charlie
+		{user2, user3}, // alice <-> bob
+		{user2, user4}, // alice <-> jack
+		{user2, user5}, // alice <-> lisa
+		{user2, user6}, // alice <-> charlie
+		{user3, user6}, // bob <-> charlie
+	}
+
+	for _, friendship := range friendships {
+		err := repo.CreateFriendship(friendship[0], friendship[1])
+		if err != nil {
+			t.Fatalf("Failed to create friendship between %s and %s: %v", 
+				friendship[0].Email, friendship[1].Email, err)
+		}
+	}
+
+	tests := []struct {
+		name            string
+		user1           *entities.User
+		user2           *entities.User
+		expectedCommon  []string // emails of expected common friends, sorted
+		wantErr         bool
+	}{
+		{
+			name:  "users with multiple common friends",
+			user1: user1, // andy: friends with alice, bob, jack, charlie
+			user2: user2, // alice: friends with andy, bob, jack, lisa, charlie
+			expectedCommon: []string{
+				"bob@mail.com",     // bob is common friend of andy and alice
+				"charlie@mail.com", // charlie is common friend of andy and alice
+				"jack@mail.com",    // jack is common friend of andy and alice
+			},
+			wantErr: false,
+		},
+		{
+			name:  "users with two common friends",
+			user1: user1, // andy: friends with alice, bob, jack, charlie
+			user2: user3, // bob: friends with andy, alice, charlie
+			expectedCommon: []string{
+				"alice@mail.com", // alice is common friend of andy and bob
+				"charlie@mail.com", // charlie is common friend of andy and bob
+			},
+			wantErr: false,
+		},
+		{
+			name:           "users with one common friend",
+			user1:          user4, // jack: friends with andy, alice
+			user2:          user5, // lisa: friends with alice
+			expectedCommon: []string{"alice@mail.com"},
+			wantErr:        false,
+		},
+		{
+			name:           "one user has no friends",
+			user1:          user1, // andy: has friends
+			user2:          user7, // diana: no friends
+			expectedCommon: []string{},
+			wantErr:        false,
+		},
+		{
+			name:           "user with no friends and user with friends",
+			user1:          user7, // diana: no friends
+			user2:          user6, // charlie: has friends but no common friends with diana
+			expectedCommon: []string{},
+			wantErr:        false,
+		},
+		{
+			name:    "first user doesn't exist",
+			user1:   &entities.User{ID: 999, Email: "nonexistent@example.com"},
+			user2:   user1,
+			wantErr: true,
+		},
+		{
+			name:    "second user doesn't exist",
+			user1:   user1,
+			user2:   &entities.User{ID: 999, Email: "nonexistent@example.com"},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			commonFriends, err := repo.GetCommonFriends(tt.user1, tt.user2)
+
+			if tt.wantErr {
+				if err == nil {
+					t.Error("expected error, got nil")
+				}
+				return
+			}
+
+			if err != nil {
+				t.Errorf("expected no error, got %v", err)
+				return
+			}
+
+			if len(commonFriends) != len(tt.expectedCommon) {
+				t.Errorf("expected %d common friends, got %d", len(tt.expectedCommon), len(commonFriends))
+				return
+			}
+
+			// Extract emails from returned friends and sort them for comparison
+			var actualEmails []string
+			for _, friend := range commonFriends {
+				actualEmails = append(actualEmails, friend.Email)
+			}
+			sort.Strings(actualEmails)
+
+			// Compare sorted expected vs actual
+			expectedSorted := make([]string, len(tt.expectedCommon))
+			copy(expectedSorted, tt.expectedCommon)
+			sort.Strings(expectedSorted)
+
+			for i, expectedEmail := range expectedSorted {
+				if actualEmails[i] != expectedEmail {
+					t.Errorf("expected common friend %d to be %s, got %s", i, expectedEmail, actualEmails[i])
+				}
+			}
+
+			// Verify no duplicate common friends
+			emailSet := make(map[string]bool)
+			for _, friend := range commonFriends {
+				if emailSet[friend.Email] {
+					t.Errorf("duplicate common friend found: %s", friend.Email)
+				}
+				emailSet[friend.Email] = true
+			}
+
+			// Verify neither user is in their own common friends list
+			for _, friend := range commonFriends {
+				if friend.ID == tt.user1.ID || friend.ID == tt.user2.ID {
+					t.Errorf("user found in common friends list: %s", friend.Email)
 				}
 			}
 		})

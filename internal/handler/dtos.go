@@ -11,9 +11,6 @@ func ValidateCreateFriendshipRequest(v *validator.Validator, r *CreateFriendship
 
 	for _, email := range r.Friends {
 		v.Check(len(email) > 0, "email", "email cannot be empty")
-	}
-
-	for _, email := range r.Friends {
 		validator.ValidateEmail(v, email)
 	}
 }
