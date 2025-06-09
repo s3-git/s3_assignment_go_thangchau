@@ -162,6 +162,79 @@ PostgreSQL 15 with automatic migrations on startup. The database is accessible a
 
 The API will be available at `http://localhost:8080` once running.
 
+### User Management Endpoints
+
+All endpoints are under `/api/v1/user`
+
+#### Create Friendship
+- **POST** `/api/v1/user/friends`
+- Creates a friendship connection between two users
+- **Request:**
+  ```json
+  {
+    "friends": ["user1@example.com", "user2@example.com"]
+  }
+  ```
+- **Response:**
+  ```json
+  {
+    "success": true
+  }
+  ```
+
+#### Get Friend List
+- **POST** `/api/v1/user/friends/list`
+- Retrieves all friends for a specific user
+- **Request:**
+  ```json
+  {
+    "email": "user@example.com"
+  }
+  ```
+- **Response:**
+  ```json
+  {
+    "success": true,
+    "friends": ["friend1@example.com", "friend2@example.com"],
+    "count": 2
+  }
+  ```
+
+#### Get Common Friends
+- **POST** `/api/v1/user/friends/common`
+- Retrieves mutual friends between two users
+- **Request:**
+  ```json
+  {
+    "friends": ["user1@example.com", "user2@example.com"]
+  }
+  ```
+- **Response:**
+  ```json
+  {
+    "success": true,
+    "friends": ["mutual1@example.com", "mutual2@example.com"],
+    "count": 2
+  }
+  ```
+
+#### Create Subscription
+- **POST** `/api/v1/user/subscriptions`
+- Creates a subscription where requestor subscribes to target's updates
+- **Request:**
+  ```json
+  {
+    "requestor": "subscriber@example.com",
+    "target": "publisher@example.com"
+  }
+  ```
+- **Response:**
+  ```json
+  {
+    "success": true
+  }
+  ```
+
 ## Troubleshooting
 
 **Port already in use:**
