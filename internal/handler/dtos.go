@@ -49,17 +49,17 @@ func ValidateSubscriptionRequest(v *validator.Validator, r *SubscriptionRequest)
 	v.Check(r.Requestor != r.Target, "emails", "requestor and target cannot be the same")
 }
 
-type BlockRequest struct {
-	Requestor string `json:"requestor"`
-	Target    string `json:"target"`
+type CreateBlockRequest struct {
+	Requestor string `json:"requestor" binding:"required,email"`
+	Target    string `json:"target" binding:"required,email"`
 }
 
-func ValidateBlockRequest(v *validator.Validator, r *BlockRequest) {
+func ValidateCreateBlockRequest(v *validator.Validator, r *CreateBlockRequest) {
 	v.Check(len(r.Requestor) > 0, "requestor", "requestor email cannot be empty")
 	v.Check(len(r.Target) > 0, "target", "target email cannot be empty")
 	validator.ValidateEmail(v, r.Requestor)
 	validator.ValidateEmail(v, r.Target)
-	v.Check(r.Requestor != r.Target, "emails", "requestor and target cannot be the same")
+	v.Check(r.Requestor != r.Target, "emails", "cannot block yourself")
 }
 
 type GetRecipientsRequest struct {

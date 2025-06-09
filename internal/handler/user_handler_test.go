@@ -18,6 +18,7 @@ type mockUserController struct {
 	getFriendListFunc      func(string) ([]*entities.User, error)
 	getCommonFriendsFunc   func(string, string) ([]*entities.User, error)
 	createSubscriptionFunc func(string, string) error
+	createBlockFunc        func(string, string) error
 }
 
 func (m *mockUserController) CreateFriendship(u1, u2 string) error {
@@ -49,6 +50,9 @@ func (m *mockUserController) CreateSubscription(requestorEmail, targetEmail stri
 }
 
 func (m *mockUserController) CreateBlock(requestorEmail, targetEmail string) error {
+	if m.createBlockFunc != nil {
+		return m.createBlockFunc(requestorEmail, targetEmail)
+	}
 	return nil
 }
 
@@ -419,20 +423,6 @@ func TestCreateSubscription(t *testing.T) {
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   `{"success":false,"error":{"type":"VALIDATION_ERROR","message":"Invalid request format","details":"invalid character '}' looking for beginning of value"}}`,
 		},
-		{
-			name:           "missing requestor field",
-			body:           `{"target":"john@example.com"}`,
-			mockFunc:       nil,
-			expectedStatus: http.StatusBadRequest,
-			expectedBody:   `{"success":false,"error":{"type":"VALIDATION_ERROR","message":"Validation failed","details":"requestor: requestor email cannot be empty; email: must be provided"}}`,
-		},
-		{
-			name:           "missing target field",
-			body:           `{"requestor":"andy@example.com"}`,
-			mockFunc:       nil,
-			expectedStatus: http.StatusBadRequest,
-			expectedBody:   `{"success":false,"error":{"type":"VALIDATION_ERROR","message":"Validation failed","details":"target: target email cannot be empty; email: must be provided"}}`,
-		},
 	}
 
 	for _, tt := range tests {
@@ -450,6 +440,138 @@ func TestCreateSubscription(t *testing.T) {
 			router.POST("/subscriptions", handler.CreateSubscription)
 
 			req, err := http.NewRequest(http.MethodPost, "/subscriptions", bytes.NewBuffer([]byte(tt.body)))
+			if err != nil {
+				t.Fatalf("failed to create request: %v", err)
+			}
+			req.Header.Set("Content-Type", "application/json")
+			w := httptest.NewRecorder()
+
+			router.ServeHTTP(w, req)
+
+			assert.Equal(t, tt.expectedStatus, w.Code)
+			assert.JSONEq(t, tt.expectedBody, w.Body.String())
+		})
+	}
+}
+func TestCreateBlock(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	tests := []struct {
+		name           string
+		body           string
+		mockFunc       func(string, string) error
+		expectedStatus int
+		expectedBody   string
+	}{
+		{
+			name: "success",
+			body: `{"requestor":"andy@example.com","target":"john@example.com"}`,
+			mockFunc: func(requestor, target string) error {
+				return nil
+			},
+			expectedStatus: http.StatusOK,
+			expectedBody:   `{"success":true}`,
+		},
+		{
+			name: "user not found error - requestor",
+			body: `{"requestor":"nonexistent@example.com","target":"john@example.com"}`,
+			mockFunc: func(requestor, target string) error {
+				return errors.Newf(errors.ErrorTypeNotFound, "User not found: %s", requestor)
+			},
+			expectedStatus: http.StatusNotFound,
+			expectedBody:   `{"success":false,"error":{"type":"NOT_FOUND","message":"User not found: nonexistent@example.com"}}`,
+		},
+		{
+			name: "user not found error - target",
+			body: `{"requestor":"andy@example.com","target":"nonexistent@example.com"}`,
+			mockFunc: func(requestor, target string) error {
+				return errors.Newf(errors.ErrorTypeNotFound, "User not found: %s", target)
+			},
+			expectedStatus: http.StatusNotFound,
+			expectedBody:   `{"success":false,"error":{"type":"NOT_FOUND","message":"User not found: nonexistent@example.com"}}`,
+		},
+		{
+			name: "database error",
+			body: `{"requestor":"andy@example.com","target":"john@example.com"}`,
+			mockFunc: func(requestor, target string) error {
+				return errors.New(errors.ErrorTypeDatabase, "Database connection failed")
+			},
+			expectedStatus: http.StatusInternalServerError,
+			expectedBody:   `{"success":false,"error":{"type":"DATABASE_ERROR","message":"Database connection failed"}}`,
+		},
+		{
+			name:           "empty requestor email",
+			body:           `{"requestor":"","target":"john@example.com"}`,
+			mockFunc:       nil,
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   `{"success":false,"error":{"type":"VALIDATION_ERROR","message":"Invalid request format","details":"Key: 'CreateBlockRequest.Requestor' Error:Field validation for 'Requestor' failed on the 'required' tag"}}`,
+		},
+		{
+			name:           "empty target email",
+			body:           `{"requestor":"andy@example.com","target":""}`,
+			mockFunc:       nil,
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   `{"success":false,"error":{"type":"VALIDATION_ERROR","message":"Invalid request format","details":"Key: 'CreateBlockRequest.Target' Error:Field validation for 'Target' failed on the 'required' tag"}}`,
+		},
+		{
+			name:           "invalid requestor email format",
+			body:           `{"requestor":"invalid-email","target":"john@example.com"}`,
+			mockFunc:       nil,
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   `{"success":false,"error":{"type":"VALIDATION_ERROR","message":"Invalid request format","details":"Key: 'CreateBlockRequest.Requestor' Error:Field validation for 'Requestor' failed on the 'email' tag"}}`,
+		},
+		{
+			name:           "invalid target email format",
+			body:           `{"requestor":"andy@example.com","target":"invalid-email"}`,
+			mockFunc:       nil,
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   `{"success":false,"error":{"type":"VALIDATION_ERROR","message":"Invalid request format","details":"Key: 'CreateBlockRequest.Target' Error:Field validation for 'Target' failed on the 'email' tag"}}`,
+		},
+		{
+			name:           "same requestor and target",
+			body:           `{"requestor":"andy@example.com","target":"andy@example.com"}`,
+			mockFunc:       nil,
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   `{"success":false,"error":{"type":"VALIDATION_ERROR","message":"Validation failed","details":"emails: cannot block yourself"}}`,
+		},
+		{
+			name:           "invalid json",
+			body:           `{"requestor": }`,
+			mockFunc:       nil,
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   `{"success":false,"error":{"type":"VALIDATION_ERROR","message":"Invalid request format","details":"invalid character '}' looking for beginning of value"}}`,
+		},
+		{
+			name:           "missing requestor field",
+			body:           `{"target":"john@example.com"}`,
+			mockFunc:       nil,
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   `{"success":false,"error":{"type":"VALIDATION_ERROR","message":"Invalid request format","details":"Key: 'CreateBlockRequest.Requestor' Error:Field validation for 'Requestor' failed on the 'required' tag"}}`,
+		},
+		{
+			name:           "missing target field",
+			body:           `{"requestor":"andy@example.com"}`,
+			mockFunc:       nil,
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   `{"success":false,"error":{"type":"VALIDATION_ERROR","message":"Invalid request format","details":"Key: 'CreateBlockRequest.Target' Error:Field validation for 'Target' failed on the 'required' tag"}}`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var mockController interfaces.UserControllerInterface
+			if tt.mockFunc != nil {
+				mockController = &mockUserController{createBlockFunc: tt.mockFunc}
+			} else {
+				mockController = &mockUserController{}
+			}
+
+			handler := NewUserHandler(mockController)
+
+			router := gin.New()
+			router.POST("/blocks", handler.CreateBlock)
+
+			req, err := http.NewRequest(http.MethodPost, "/blocks", bytes.NewBuffer([]byte(tt.body)))
 			if err != nil {
 				t.Fatalf("failed to create request: %v", err)
 			}

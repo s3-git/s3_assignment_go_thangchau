@@ -178,9 +178,102 @@ func (r *userRepository) CreateSubscription(requestor, target *entities.User) er
 	return nil
 }
 
-func (r *userRepository) CreateBlock(requestor, target *entities.User) error {
-	// TODO: Implement block creation
+func (r *userRepository) CreateBlockTx(requestor, target *entities.User) error {
+	// Begin transaction
+	tx, err := r.db.BeginTx(context.Background(), nil)
+	if err != nil {
+		return errors.Wrap(err, errors.ErrorTypeDatabase, "Failed to begin transaction")
+	}
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// 1. Remove friendship if it exists (bidirectional)
+	firstUserID := requestor.ID
+	secondUserID := target.ID
+	if requestor.ID > target.ID {
+		firstUserID = target.ID
+		secondUserID = requestor.ID
+	}
+
+	_, err = models.Friends(
+		models.FriendWhere.User1ID.EQ(firstUserID),
+		models.FriendWhere.User2ID.EQ(secondUserID),
+	).DeleteAll(context.Background(), tx)
+	if err != nil {
+		return errors.Wrap(err, errors.ErrorTypeDatabase, "Failed to delete friendship")
+	}
+
+	// 2. Remove subscriptions from both sides
+	// Remove requestor's subscription to target
+	_, err = models.Subscriptions(
+		models.SubscriptionWhere.SubscriberID.EQ(requestor.ID),
+		models.SubscriptionWhere.TargetID.EQ(target.ID),
+	).DeleteAll(context.Background(), tx)
+	if err != nil {
+		return errors.Wrap(err, errors.ErrorTypeDatabase, "Failed to delete requestor subscription")
+	}
+
+	// Remove target's subscription to requestor
+	_, err = models.Subscriptions(
+		models.SubscriptionWhere.SubscriberID.EQ(target.ID),
+		models.SubscriptionWhere.TargetID.EQ(requestor.ID),
+	).DeleteAll(context.Background(), tx)
+	if err != nil {
+		return errors.Wrap(err, errors.ErrorTypeDatabase, "Failed to delete target subscription")
+	}
+
+	// 3. Create the block
+	block := &models.Block{
+		BlockerID: requestor.ID,
+		BlockedID: target.ID,
+	}
+
+	err = block.Insert(context.Background(), tx, boil.Infer())
+	if err != nil {
+		return errors.FromError(err)
+	}
+
+	// Commit transaction
+	if err = tx.Commit(); err != nil {
+		return errors.Wrap(err, errors.ErrorTypeDatabase, "Failed to commit transaction")
+	}
+
 	return nil
+}
+
+func (r *userRepository) CheckBlockExists(requestorID, targetID int) (bool, error) {
+	_, err := models.Blocks(
+		models.BlockWhere.BlockerID.EQ(requestorID),
+		models.BlockWhere.BlockedID.EQ(targetID),
+	).One(context.Background(), r.db)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return false, nil
+		}
+		return false, errors.Wrap(err, errors.ErrorTypeDatabase, "Failed to check block existence")
+	}
+	return true, nil
+}
+
+func (r *userRepository) CheckBidirectionalBlock(user1ID, user2ID int) (bool, error) {
+	// Check if user1 blocks user2
+	blocked1, err := r.CheckBlockExists(user1ID, user2ID)
+	if err != nil {
+		return false, err
+	}
+	if blocked1 {
+		return true, nil
+	}
+
+	// Check if user2 blocks user1
+	blocked2, err := r.CheckBlockExists(user2ID, user1ID)
+	if err != nil {
+		return false, err
+	}
+	return blocked2, nil
 }
 
 func (r *userRepository) GetRecipients(sender *entities.User, mentionedUsers []*entities.User) ([]*entities.User, error) {

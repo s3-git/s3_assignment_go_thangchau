@@ -33,6 +33,15 @@ func (c *userController) CreateFriendship(user1Email, user2Email string) error {
 		return err
 	}
 
+	// Check if either user has blocked the other
+	isBlocked, err := c.userRepo.CheckBidirectionalBlock(user1.ID, user2.ID)
+	if err != nil {
+		return err
+	}
+	if isBlocked {
+		return errors.ErrUserBlocked
+	}
+
 	return c.userRepo.CreateFriendship(user1, user2)
 }
 
@@ -76,12 +85,30 @@ func (c *userController) CreateSubscription(requestorEmail, targetEmail string) 
 		return err
 	}
 
+	// Check if either user has blocked the other
+	isBlocked, err := c.userRepo.CheckBidirectionalBlock(requestor.ID, target.ID)
+	if err != nil {
+		return err
+	}
+	if isBlocked {
+		return errors.ErrUserBlocked
+	}
+
 	return c.userRepo.CreateSubscription(requestor, target)
 }
 
 func (c *userController) CreateBlock(requestorEmail, targetEmail string) error {
-	// TODO: Implement block business logic
-	return nil
+	requestor, err := c.userRepo.GetUserByEmail(requestorEmail)
+	if err != nil {
+		return err
+	}
+
+	target, err := c.userRepo.GetUserByEmail(targetEmail)
+	if err != nil {
+		return err
+	}
+
+	return c.userRepo.CreateBlockTx(requestor, target)
 }
 
 func (c *userController) GetRecipients(senderEmail, text string) ([]*entities.User, error) {

@@ -633,3 +633,362 @@ func TestUserRepository_CreateSubscription(t *testing.T) {
 		})
 	}
 }
+
+func TestUserRepository_CreateBlockTx(t *testing.T) {
+	db, cleanup := setupTestContainer(t)
+	defer cleanup()
+
+	repo := NewUserRepository(db)
+
+	// Setup test data - create some existing friendships and subscriptions
+	user1 := &entities.User{ID: 1, Email: "andy@mail.com"}
+	user2 := &entities.User{ID: 2, Email: "alice@mail.com"}
+	user3 := &entities.User{ID: 3, Email: "bob@mail.com"}
+	user4 := &entities.User{ID: 4, Email: "jack@mail.com"}
+
+	// Create friendships between users 1-2 and 3-4
+	err := repo.CreateFriendship(user1, user2)
+	if err != nil {
+		t.Fatalf("Failed to create friendship 1-2: %v", err)
+	}
+	err = repo.CreateFriendship(user3, user4)
+	if err != nil {
+		t.Fatalf("Failed to create friendship 3-4: %v", err)
+	}
+
+	// Create subscriptions
+	err = repo.CreateSubscription(user1, user2) // user1 subscribes to user2
+	if err != nil {
+		t.Fatalf("Failed to create subscription 1->2: %v", err)
+	}
+	err = repo.CreateSubscription(user2, user1) // user2 subscribes to user1 (bidirectional)
+	if err != nil {
+		t.Fatalf("Failed to create subscription 2->1: %v", err)
+	}
+	err = repo.CreateSubscription(user3, user4) // user3 subscribes to user4
+	if err != nil {
+		t.Fatalf("Failed to create subscription 3->4: %v", err)
+	}
+
+	tests := []struct {
+		name      string
+		requestor *entities.User
+		target    *entities.User
+		wantErr   bool
+		setup     func() // Additional setup for specific test cases
+		verify    func(t *testing.T) // Verification logic for specific test cases
+	}{
+		{
+			name:      "successful block creation with friendship and subscriptions cleanup",
+			requestor: user1,
+			target:    user2,
+			wantErr:   false,
+			verify: func(t *testing.T) {
+				// Verify block was created
+				var blockCount int
+				err := db.QueryRow("SELECT COUNT(*) FROM blocks WHERE blocker_id = $1 AND blocked_id = $2", 
+					user1.ID, user2.ID).Scan(&blockCount)
+				if err != nil {
+					t.Errorf("Failed to verify block: %v", err)
+				}
+				if blockCount != 1 {
+					t.Errorf("Expected 1 block record, got %d", blockCount)
+				}
+
+				// Verify friendship was removed
+				var friendshipCount int
+				err = db.QueryRow("SELECT COUNT(*) FROM friends WHERE (user1_id = $1 AND user2_id = $2) OR (user1_id = $2 AND user2_id = $1)", 
+					user1.ID, user2.ID).Scan(&friendshipCount)
+				if err != nil {
+					t.Errorf("Failed to verify friendship removal: %v", err)
+				}
+				if friendshipCount != 0 {
+					t.Errorf("Expected 0 friendship records, got %d", friendshipCount)
+				}
+
+				// Verify bidirectional subscriptions were removed
+				var subscriptionCount int
+				err = db.QueryRow("SELECT COUNT(*) FROM subscriptions WHERE (subscriber_id = $1 AND target_id = $2) OR (subscriber_id = $2 AND target_id = $1)", 
+					user1.ID, user2.ID).Scan(&subscriptionCount)
+				if err != nil {
+					t.Errorf("Failed to verify subscription removal: %v", err)
+				}
+				if subscriptionCount != 0 {
+					t.Errorf("Expected 0 subscription records, got %d", subscriptionCount)
+				}
+			},
+		},
+		{
+			name:      "block creation without existing friendship",
+			requestor: user3,
+			target:    &entities.User{ID: 5, Email: "lisa@mail.com"}, // No existing friendship
+			wantErr:   false,
+			verify: func(t *testing.T) {
+				// Verify block was created
+				var blockCount int
+				err := db.QueryRow("SELECT COUNT(*) FROM blocks WHERE blocker_id = $1 AND blocked_id = $2", 
+					user3.ID, 5).Scan(&blockCount)
+				if err != nil {
+					t.Errorf("Failed to verify block: %v", err)
+				}
+				if blockCount != 1 {
+					t.Errorf("Expected 1 block record, got %d", blockCount)
+				}
+			},
+		},
+		{
+			name:      "duplicate block should fail",
+			requestor: user1,
+			target:    user2,
+			wantErr:   true,
+			setup: func() {
+				// Block was already created in previous test
+			},
+		},
+		{
+			name:      "block creation with only one-way subscription",
+			requestor: user4,
+			target:    user3,
+			wantErr:   false,
+			verify: func(t *testing.T) {
+				// Verify block was created
+				var blockCount int
+				err := db.QueryRow("SELECT COUNT(*) FROM blocks WHERE blocker_id = $1 AND blocked_id = $2", 
+					user4.ID, user3.ID).Scan(&blockCount)
+				if err != nil {
+					t.Errorf("Failed to verify block: %v", err)
+				}
+				if blockCount != 1 {
+					t.Errorf("Expected 1 block record, got %d", blockCount)
+				}
+
+				// Verify friendship was removed (user3-user4 friendship)
+				var friendshipCount int
+				err = db.QueryRow("SELECT COUNT(*) FROM friends WHERE (user1_id = $1 AND user2_id = $2) OR (user1_id = $2 AND user2_id = $1)", 
+					user3.ID, user4.ID).Scan(&friendshipCount)
+				if err != nil {
+					t.Errorf("Failed to verify friendship removal: %v", err)
+				}
+				if friendshipCount != 0 {
+					t.Errorf("Expected 0 friendship records, got %d", friendshipCount)
+				}
+
+				// Verify subscription from user3 to user4 was removed
+				var subscriptionCount int
+				err = db.QueryRow("SELECT COUNT(*) FROM subscriptions WHERE subscriber_id = $1 AND target_id = $2", 
+					user3.ID, user4.ID).Scan(&subscriptionCount)
+				if err != nil {
+					t.Errorf("Failed to verify subscription removal: %v", err)
+				}
+				if subscriptionCount != 0 {
+					t.Errorf("Expected 0 subscription records from user3 to user4, got %d", subscriptionCount)
+				}
+			},
+		},
+		{
+			name:      "block with invalid requestor",
+			requestor: &entities.User{ID: 999, Email: "nonexistent@example.com"},
+			target:    user2,
+			wantErr:   true,
+		},
+		{
+			name:      "block with invalid target",
+			requestor: user2,
+			target:    &entities.User{ID: 999, Email: "nonexistent@example.com"},
+			wantErr:   true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.setup != nil {
+				tt.setup()
+			}
+
+			err := repo.CreateBlockTx(tt.requestor, tt.target)
+
+			if tt.wantErr {
+				if err == nil {
+					t.Error("expected error, got nil")
+				}
+			} else {
+				if err != nil {
+					t.Errorf("expected no error, got %v", err)
+				}
+
+				if tt.verify != nil {
+					tt.verify(t)
+				}
+			}
+		})
+	}
+}
+
+func TestUserRepository_CheckBlockExists(t *testing.T) {
+	db, cleanup := setupTestContainer(t)
+	defer cleanup()
+
+	repo := NewUserRepository(db)
+
+	// Setup test data - create a block
+	user1 := &entities.User{ID: 1, Email: "andy@mail.com"}
+	user2 := &entities.User{ID: 2, Email: "alice@mail.com"}
+	user3 := &entities.User{ID: 3, Email: "bob@mail.com"}
+
+	// Create a block from user1 to user2
+	err := repo.CreateBlockTx(user1, user2)
+	if err != nil {
+		t.Fatalf("Failed to create block: %v", err)
+	}
+
+	tests := []struct {
+		name        string
+		requestorID int
+		targetID    int
+		expected    bool
+		wantErr     bool
+	}{
+		{
+			name:        "existing block",
+			requestorID: user1.ID,
+			targetID:    user2.ID,
+			expected:    true,
+			wantErr:     false,
+		},
+		{
+			name:        "non-existing block (reverse)",
+			requestorID: user2.ID,
+			targetID:    user1.ID,
+			expected:    false,
+			wantErr:     false,
+		},
+		{
+			name:        "non-existing block (different users)",
+			requestorID: user1.ID,
+			targetID:    user3.ID,
+			expected:    false,
+			wantErr:     false,
+		},
+		{
+			name:        "non-existing block (completely different users)",
+			requestorID: user2.ID,
+			targetID:    user3.ID,
+			expected:    false,
+			wantErr:     false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			exists, err := repo.CheckBlockExists(tt.requestorID, tt.targetID)
+
+			if tt.wantErr {
+				if err == nil {
+					t.Error("expected error, got nil")
+				}
+			} else {
+				if err != nil {
+					t.Errorf("expected no error, got %v", err)
+				}
+				if exists != tt.expected {
+					t.Errorf("expected %v, got %v", tt.expected, exists)
+				}
+			}
+		})
+	}
+}
+
+func TestUserRepository_CheckBidirectionalBlock(t *testing.T) {
+	db, cleanup := setupTestContainer(t)
+	defer cleanup()
+
+	repo := NewUserRepository(db)
+
+	// Setup test data - create blocks in different directions
+	user1 := &entities.User{ID: 1, Email: "andy@mail.com"}
+	user2 := &entities.User{ID: 2, Email: "alice@mail.com"}
+	user3 := &entities.User{ID: 3, Email: "bob@mail.com"}
+	user4 := &entities.User{ID: 4, Email: "jack@mail.com"}
+
+	// Create block from user1 to user2
+	err := repo.CreateBlockTx(user1, user2)
+	if err != nil {
+		t.Fatalf("Failed to create block 1->2: %v", err)
+	}
+
+	// Create block from user4 to user3
+	err = repo.CreateBlockTx(user4, user3)
+	if err != nil {
+		t.Fatalf("Failed to create block 4->3: %v", err)
+	}
+
+	tests := []struct {
+		name     string
+		user1ID  int
+		user2ID  int
+		expected bool
+		wantErr  bool
+	}{
+		{
+			name:     "user1 blocks user2",
+			user1ID:  user1.ID,
+			user2ID:  user2.ID,
+			expected: true,
+			wantErr:  false,
+		},
+		{
+			name:     "user2 blocked by user1 (reverse check)",
+			user1ID:  user2.ID,
+			user2ID:  user1.ID,
+			expected: true, // Should return true because user1 blocks user2
+			wantErr:  false,
+		},
+		{
+			name:     "user4 blocks user3",
+			user1ID:  user4.ID,
+			user2ID:  user3.ID,
+			expected: true,
+			wantErr:  false,
+		},
+		{
+			name:     "user3 blocked by user4 (reverse check)",
+			user1ID:  user3.ID,
+			user2ID:  user4.ID,
+			expected: true, // Should return true because user4 blocks user3
+			wantErr:  false,
+		},
+		{
+			name:     "no block between user1 and user3",
+			user1ID:  user1.ID,
+			user2ID:  user3.ID,
+			expected: false,
+			wantErr:  false,
+		},
+		{
+			name:     "no block between user2 and user4",
+			user1ID:  user2.ID,
+			user2ID:  user4.ID,
+			expected: false,
+			wantErr:  false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			blocked, err := repo.CheckBidirectionalBlock(tt.user1ID, tt.user2ID)
+
+			if tt.wantErr {
+				if err == nil {
+					t.Error("expected error, got nil")
+				}
+			} else {
+				if err != nil {
+					t.Errorf("expected no error, got %v", err)
+				}
+				if blocked != tt.expected {
+					t.Errorf("expected %v, got %v", tt.expected, blocked)
+				}
+			}
+		})
+	}
+}
