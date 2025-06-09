@@ -220,3 +220,157 @@ func TestUserRepository_GetUserByEmail(t *testing.T) {
 		})
 	}
 }
+
+
+func TestUserRepository_GetFriendList(t *testing.T) {
+	db, cleanup := setupTestContainer(t)
+	defer cleanup()
+
+	repo := NewUserRepository(db)
+
+	// Setup test data: Create some friendships first
+	// The test data will be seeded by migrations, so we have users with IDs 1-5
+	user1 := &entities.User{ID: 1, Email: "andy@mail.com"}
+	user2 := &entities.User{ID: 2, Email: "alice@mail.com"}
+	user3 := &entities.User{ID: 3, Email: "bob@mail.com"}
+	user4 := &entities.User{ID: 4, Email: "jack@mail.com"}
+	user5 := &entities.User{ID: 5, Email: "lisa@mail.com"}
+	
+	// Create an additional user for testing "no friends" case
+	_, err := db.ExecContext(context.Background(), "INSERT INTO users (email) VALUES('nofriends@mail.com')")
+	if err != nil {
+		t.Fatalf("Failed to create test user: %v", err)
+	}
+	user6 := &entities.User{ID: 6, Email: "nofriends@mail.com"}
+
+	// Create friendships for testing
+	// andy (1) is friends with alice (2) and bob (3)
+	err = repo.CreateFriendship(user1, user2)
+	if err != nil {
+		t.Fatalf("Failed to create friendship 1-2: %v", err)
+	}
+	err = repo.CreateFriendship(user1, user3)
+	if err != nil {
+		t.Fatalf("Failed to create friendship 1-3: %v", err)
+	}
+
+	// alice (2) is also friends with jack (4) - testing user2 as user1 in friendship table
+	err = repo.CreateFriendship(user2, user4)
+	if err != nil {
+		t.Fatalf("Failed to create friendship 2-4: %v", err)
+	}
+
+	// bob (3) is friends with lisa (5) - testing user1 as user2 in friendship table
+	err = repo.CreateFriendship(user5, user3) // This should store as (3,5) since 3 < 5
+	if err != nil {
+		t.Fatalf("Failed to create friendship 5-3: %v", err)
+	}
+
+	tests := []struct {
+		name            string
+		user            *entities.User
+		expectedFriends []string // emails of expected friends, sorted
+		wantErr         bool
+	}{
+		{
+			name: "user with multiple friends",
+			user: user1, // andy
+			expectedFriends: []string{
+				"alice@mail.com", // sorted alphabetically
+				"bob@mail.com",
+			},
+			wantErr: false,
+		},
+		{
+			name: "user with multiple friends (user as user1)",
+			user: user2, // alice
+			expectedFriends: []string{
+				"andy@mail.com",
+				"jack@mail.com",
+			},
+			wantErr: false,
+		},
+		{
+			name: "user with multiple friends (user as user2)",
+			user: user3, // bob
+			expectedFriends: []string{
+				"andy@mail.com",
+				"lisa@mail.com",
+			},
+			wantErr: false,
+		},
+		{
+			name: "user with one friend",
+			user: user4, // jack
+			expectedFriends: []string{
+				"alice@mail.com",
+			},
+			wantErr: false,
+		},
+		{
+			name: "user with one friend",
+			user: user5, // lisa
+			expectedFriends: []string{
+				"bob@mail.com",
+			},
+			wantErr: false,
+		},
+		{
+			name:            "user with no friends",
+			user:            user6, // nofriends
+			expectedFriends: []string{},
+			wantErr:         false,
+		},
+		{
+			name:    "non-existent user",
+			user:    &entities.User{ID: 999, Email: "nonexistent@example.com"},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			friends, err := repo.GetFriendList(tt.user)
+
+			if tt.wantErr {
+				if err == nil {
+					t.Error("expected error, got nil")
+				}
+				return
+			}
+
+			if err != nil {
+				t.Errorf("expected no error, got %v", err)
+				return
+			}
+
+			if len(friends) != len(tt.expectedFriends) {
+				t.Errorf("expected %d friends, got %d", len(tt.expectedFriends), len(friends))
+				return
+			}
+
+			// Check that friends are returned in alphabetical order by email
+			for i, expectedEmail := range tt.expectedFriends {
+				if friends[i].Email != expectedEmail {
+					t.Errorf("expected friend %d to be %s, got %s", i, expectedEmail, friends[i].Email)
+				}
+			}
+
+			// Verify no duplicate friends
+			emailSet := make(map[string]bool)
+			for _, friend := range friends {
+				if emailSet[friend.Email] {
+					t.Errorf("duplicate friend found: %s", friend.Email)
+				}
+				emailSet[friend.Email] = true
+			}
+
+			// Verify user is not in their own friend list
+			for _, friend := range friends {
+				if friend.ID == tt.user.ID {
+					t.Errorf("user %s found in their own friend list", tt.user.Email)
+				}
+			}
+		})
+	}
+}

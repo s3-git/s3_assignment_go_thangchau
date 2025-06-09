@@ -15,6 +15,7 @@ import (
 
 type mockUserController struct {
 	createFriendshipsFunc func(string, string) error
+	getFriendListFunc     func(string) ([]*entities.User, error)
 }
 
 func (m *mockUserController) CreateFriendship(u1, u2 string) error {
@@ -25,6 +26,9 @@ func (m *mockUserController) CreateFriendship(u1, u2 string) error {
 }
 
 func (m *mockUserController) GetFriendList(email string) ([]*entities.User, error) {
+	if m.getFriendListFunc != nil {
+		return m.getFriendListFunc(email)
+	}
 	return []*entities.User{}, nil
 }
 
@@ -123,6 +127,97 @@ func TestCreateFriendships(t *testing.T) {
 			router.POST("/friends", handler.CreateFriendships)
 
 			req, err := http.NewRequest(http.MethodPost, "/friends", bytes.NewBuffer([]byte(tt.body)))
+			if err != nil {
+				t.Fatalf("failed to create request: %v", err)
+			}
+			req.Header.Set("Content-Type", "application/json")
+			w := httptest.NewRecorder()
+
+			router.ServeHTTP(w, req)
+
+			assert.Equal(t, tt.expectedStatus, w.Code)
+			assert.JSONEq(t, tt.expectedBody, w.Body.String())
+		})
+	}
+}
+func TestGetFriendList(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	tests := []struct {
+		name           string
+		body           string
+		mockFunc       func(string) ([]*entities.User, error)
+		expectedStatus int
+		expectedBody   string
+	}{
+		{
+			name: "success with friends",
+			body: `{"email":"andy@example.com"}`,
+			mockFunc: func(email string) ([]*entities.User, error) {
+				return []*entities.User{
+					{ID: 1, Email: "john@example.com"},
+					{ID: 2, Email: "jane@example.com"},
+				}, nil
+			},
+			expectedStatus: http.StatusOK,
+			expectedBody:   `{"success":true,"friends":["john@example.com","jane@example.com"],"count":2}`,
+		},
+		{
+			name: "success with no friends",
+			body: `{"email":"andy@example.com"}`,
+			mockFunc: func(email string) ([]*entities.User, error) {
+				return []*entities.User{}, nil
+			},
+			expectedStatus: http.StatusOK,
+			expectedBody:   `{"success":true,"friends":[],"count":0}`,
+		},
+		{
+			name: "user not found error",
+			body: `{"email":"nonexistent@example.com"}`,
+			mockFunc: func(email string) ([]*entities.User, error) {
+				return nil, errors.Newf(errors.ErrorTypeNotFound, "User with email '%s' not found", email)
+			},
+			expectedStatus: http.StatusNotFound,
+			expectedBody:   `{"success":false,"error":{"type":"NOT_FOUND","message":"User with email 'nonexistent@example.com' not found"}}`,
+		},
+		{
+			name:           "invalid email format",
+			body:           `{"email":"invalid-email"}`,
+			mockFunc:       nil,
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   `{"success":false,"error":{"type":"VALIDATION_ERROR","message":"Validation failed","details":"email: must be valid email address"}}`,
+		},
+		{
+			name:           "empty email",
+			body:           `{"email":""}`,
+			mockFunc:       nil,
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   `{"success":false,"error":{"type":"VALIDATION_ERROR","message":"Validation failed","details":"email: must be provided"}}`,
+		},
+		{
+			name:           "invalid json",
+			body:           `{"email": }`,
+			mockFunc:       nil,
+			expectedStatus: http.StatusBadRequest,
+			expectedBody:   `{"success":false,"error":{"type":"VALIDATION_ERROR","message":"Invalid request format","details":"invalid character '}' looking for beginning of value"}}`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var mockController interfaces.UserControllerInterface
+			if tt.mockFunc != nil {
+				mockController = &mockUserController{getFriendListFunc: tt.mockFunc}
+			} else {
+				mockController = &mockUserController{}
+			}
+
+			handler := NewUserHandler(mockController)
+
+			router := gin.New()
+			router.POST("/friends/list", handler.GetFriendList)
+
+			req, err := http.NewRequest(http.MethodPost, "/friends/list", bytes.NewBuffer([]byte(tt.body)))
 			if err != nil {
 				t.Fatalf("failed to create request: %v", err)
 			}

@@ -9,10 +9,8 @@ import (
 func SetupRoutes(r *gin.Engine, controllers interfaces.Controllers) {
 	handlers := NewHandlers(controllers)
 
-	// API version grouping
 	v1 := r.Group("/api/v1")
 	{
-		// User routes
 		users := v1.Group("/user")
 		{
 			users.POST("/friends", handlers.UserHandler.CreateFriendships)

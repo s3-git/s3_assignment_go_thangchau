@@ -9,6 +9,7 @@ import (
 	"database/sql"
 
 	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
 type userRepository struct {
@@ -63,8 +64,76 @@ func (r *userRepository) CreateFriendship(user1, user2 *entities.User) error {
 }
 
 func (r *userRepository) GetFriendList(user *entities.User) ([]*entities.User, error) {
-	// TODO: Implement friend list retrieval
-	return nil, nil
+	// First verify that the user exists
+	_, err := models.Users(
+		models.UserWhere.ID.EQ(user.ID),
+	).One(context.Background(), r.db)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, errors.Newf(errors.ErrorTypeNotFound, "User with ID %d not found", user.ID)
+		}
+		return nil, errors.Wrap(err, errors.ErrorTypeDatabase, "Failed to fetch user")
+	}
+
+	// Get friendships where this user is user1
+	user1Friends, err := models.Friends(
+		models.FriendWhere.User1ID.EQ(user.ID),
+		qm.Load(models.FriendRels.User2),
+	).All(context.Background(), r.db)
+	if err != nil {
+		return nil, errors.Wrap(err, errors.ErrorTypeDatabase, "Failed to fetch user1 friends")
+	}
+
+	// Get friendships where this user is user2
+	user2Friends, err := models.Friends(
+		models.FriendWhere.User2ID.EQ(user.ID),
+		qm.Load(models.FriendRels.User1),
+	).All(context.Background(), r.db)
+	if err != nil {
+		return nil, errors.Wrap(err, errors.ErrorTypeDatabase, "Failed to fetch user2 friends")
+	}
+
+	// Collect all friend users
+	friendMap := make(map[int]*entities.User)
+	
+	// Add friends from user1 relationships (where current user is user1)
+	for _, friendship := range user1Friends {
+		if friendship.R != nil && friendship.R.User2 != nil {
+			friendUser := friendship.R.User2
+			friendMap[friendUser.ID] = &entities.User{
+				ID:    friendUser.ID,
+				Email: friendUser.Email,
+			}
+		}
+	}
+
+	// Add friends from user2 relationships (where current user is user2)
+	for _, friendship := range user2Friends {
+		if friendship.R != nil && friendship.R.User1 != nil {
+			friendUser := friendship.R.User1
+			friendMap[friendUser.ID] = &entities.User{
+				ID:    friendUser.ID,
+				Email: friendUser.Email,
+			}
+		}
+	}
+
+	// Convert map to slice and sort by email
+	var friends []*entities.User
+	for _, friend := range friendMap {
+		friends = append(friends, friend)
+	}
+
+	// Sort by email for consistent ordering
+	for i := range len(friends) - 1 {
+		for j := i + 1; j < len(friends); j++ {
+			if friends[i].Email > friends[j].Email {
+				friends[i], friends[j] = friends[j], friends[i]
+			}
+		}
+	}
+
+	return friends, nil
 }
 
 func (r *userRepository) GetCommonFriends(user1, user2 *entities.User) ([]*entities.User, error) {

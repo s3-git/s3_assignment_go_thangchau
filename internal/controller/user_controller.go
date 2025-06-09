@@ -37,8 +37,12 @@ func (c *userController) CreateFriendship(user1Email, user2Email string) error {
 }
 
 func (c *userController) GetFriendList(email string) ([]*entities.User, error) {
-	// TODO: Implement friend list business logic
-	return nil, nil
+	user, err := c.userRepo.GetUserByEmail(email)
+	if err != nil {
+		return nil, err
+	}
+
+	return c.userRepo.GetFriendList(user)
 }
 
 func (c *userController) GetCommonFriends(email1, email2 string) ([]*entities.User, error) {
