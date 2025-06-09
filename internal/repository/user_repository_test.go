@@ -544,3 +544,92 @@ func TestUserRepository_GetCommonFriends(t *testing.T) {
 		})
 	}
 }
+func TestUserRepository_CreateSubscription(t *testing.T) {
+	db, cleanup := setupTestContainer(t)
+	defer cleanup()
+
+	repo := NewUserRepository(db)
+
+	tests := []struct {
+		name       string
+		subscriber *entities.User
+		target     *entities.User
+		wantErr    bool
+	}{
+		{
+			name: "successful subscription creation",
+			subscriber: &entities.User{
+				ID:    1,
+				Email: "andy@mail.com",
+			},
+			target: &entities.User{
+				ID:    2,
+				Email: "alice@mail.com",
+			},
+			wantErr: false,
+		},
+		{
+			name: "duplicate subscription should fail",
+			subscriber: &entities.User{
+				ID:    1,
+				Email: "andy@mail.com",
+			},
+			target: &entities.User{
+				ID:    2,
+				Email: "alice@mail.com",
+			},
+			wantErr: true,
+		},
+		{
+			name: "subscription to self should fail",
+			subscriber: &entities.User{
+				ID:    1,
+				Email: "andy@mail.com",
+			},
+			target: &entities.User{
+				ID:    1,
+				Email: "andy@mail.com",
+			},
+			wantErr: true,
+		},
+		{
+			name: "subscription with different users",
+			subscriber: &entities.User{
+				ID:    3,
+				Email: "bob@mail.com",
+			},
+			target: &entities.User{
+				ID:    4,
+				Email: "jack@mail.com",
+			},
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := repo.CreateSubscription(tt.subscriber, tt.target)
+
+			if tt.wantErr {
+				if err == nil {
+					t.Error("expected error, got nil")
+				}
+			} else {
+				if err != nil {
+					t.Errorf("expected no error, got %v", err)
+				}
+
+				// Verify subscription was created
+				var count int
+				query := "SELECT COUNT(*) FROM subscriptions WHERE subscriber_id = $1 AND target_id = $2"
+				err = db.QueryRow(query, tt.subscriber.ID, tt.target.ID).Scan(&count)
+				if err != nil {
+					t.Errorf("Failed to verify subscription: %v", err)
+				}
+				if count != 1 {
+					t.Errorf("Expected 1 subscription record, got %d", count)
+				}
+			}
+		})
+	}
+}

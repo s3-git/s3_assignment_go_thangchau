@@ -66,8 +66,17 @@ func (c *userController) GetCommonFriends(email1, email2 string) ([]*entities.Us
 }
 
 func (c *userController) CreateSubscription(requestorEmail, targetEmail string) error {
-	// TODO: Implement subscription business logic
-	return nil
+	requestor, err := c.userRepo.GetUserByEmail(requestorEmail)
+	if err != nil {
+		return err
+	}
+
+	target, err := c.userRepo.GetUserByEmail(targetEmail)
+	if err != nil {
+		return err
+	}
+
+	return c.userRepo.CreateSubscription(requestor, target)
 }
 
 func (c *userController) CreateBlock(requestorEmail, targetEmail string) error {
@@ -79,4 +88,3 @@ func (c *userController) GetRecipients(senderEmail, text string) ([]*entities.Us
 	// TODO: Implement recipients business logic
 	return nil, nil
 }
- 

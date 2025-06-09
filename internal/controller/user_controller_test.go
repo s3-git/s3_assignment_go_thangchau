@@ -9,10 +9,11 @@ import (
 
 // mockUserRepo implements interfaces.UserRepositoryInterface for testing
 type mockUserRepo struct {
-	createFriendshipFunc  func(user1, user2 *entities.User) error
-	getUserByEmailFunc    func(email string) (*entities.User, error)
-	getFriendListFunc     func(user *entities.User) ([]*entities.User, error)
-	getCommonFriendsFunc  func(user1, user2 *entities.User) ([]*entities.User, error)
+	createFriendshipFunc    func(user1, user2 *entities.User) error
+	getUserByEmailFunc      func(email string) (*entities.User, error)
+	getFriendListFunc       func(user *entities.User) ([]*entities.User, error)
+	getCommonFriendsFunc    func(user1, user2 *entities.User) ([]*entities.User, error)
+	createSubscriptionFunc  func(requestor, target *entities.User) error
 }
 
 func (m *mockUserRepo) CreateFriendship(user1, user2 *entities.User) error {
@@ -37,6 +38,9 @@ func (m *mockUserRepo) GetCommonFriends(user1, user2 *entities.User) ([]*entitie
 }
 
 func (m *mockUserRepo) CreateSubscription(requestor, target *entities.User) error {
+	if m.createSubscriptionFunc != nil {
+		return m.createSubscriptionFunc(requestor, target)
+	}
 	return nil
 }
 
@@ -424,3 +428,147 @@ func TestGetCommonFriends(t *testing.T) {
 	}
 }
 
+
+func TestCreateSubscription(t *testing.T) {
+	tests := []struct {
+		name                   string
+		requestorEmail         string
+		targetEmail            string
+		getUserByEmailFunc     func(email string) (*entities.User, error)
+		createSubscriptionFunc func(requestor, target *entities.User) error
+		wantErr                bool
+		wantErrType            errors.ErrorType
+		wantErrMsg             string
+	}{
+		{
+			name:           "successful subscription creation",
+			requestorEmail: "requestor@example.com",
+			targetEmail:    "target@example.com",
+			getUserByEmailFunc: func(email string) (*entities.User, error) {
+				if email == "requestor@example.com" {
+					return &entities.User{ID: 1, Email: "requestor@example.com"}, nil
+				}
+				if email == "target@example.com" {
+					return &entities.User{ID: 2, Email: "target@example.com"}, nil
+				}
+				return nil, errors.Newf(errors.ErrorTypeNotFound, "User with email '%s' not found", email)
+			},
+			createSubscriptionFunc: nil,
+			wantErr:                false,
+		},
+		{
+			name:           "requestor user not found",
+			requestorEmail: "nonexistent@example.com",
+			targetEmail:    "target@example.com",
+			getUserByEmailFunc: func(email string) (*entities.User, error) {
+				if email == "nonexistent@example.com" {
+					return nil, errors.Newf(errors.ErrorTypeNotFound, "User with email '%s' not found", email)
+				}
+				if email == "target@example.com" {
+					return &entities.User{ID: 2, Email: "target@example.com"}, nil
+				}
+				return nil, errors.Newf(errors.ErrorTypeNotFound, "User with email '%s' not found", email)
+			},
+			createSubscriptionFunc: nil,
+			wantErr:                true,
+			wantErrType:            errors.ErrorTypeNotFound,
+			wantErrMsg:             "User with email 'nonexistent@example.com' not found",
+		},
+		{
+			name:           "target user not found",
+			requestorEmail: "requestor@example.com",
+			targetEmail:    "nonexistent@example.com",
+			getUserByEmailFunc: func(email string) (*entities.User, error) {
+				if email == "requestor@example.com" {
+					return &entities.User{ID: 1, Email: "requestor@example.com"}, nil
+				}
+				if email == "nonexistent@example.com" {
+					return nil, errors.Newf(errors.ErrorTypeNotFound, "User with email '%s' not found", email)
+				}
+				return nil, errors.Newf(errors.ErrorTypeNotFound, "User with email '%s' not found", email)
+			},
+			createSubscriptionFunc: nil,
+			wantErr:                true,
+			wantErrType:            errors.ErrorTypeNotFound,
+			wantErrMsg:             "User with email 'nonexistent@example.com' not found",
+		},
+		{
+			name:           "repository error when creating subscription",
+			requestorEmail: "requestor@example.com",
+			targetEmail:    "target@example.com",
+			getUserByEmailFunc: func(email string) (*entities.User, error) {
+				if email == "requestor@example.com" {
+					return &entities.User{ID: 1, Email: "requestor@example.com"}, nil
+				}
+				if email == "target@example.com" {
+					return &entities.User{ID: 2, Email: "target@example.com"}, nil
+				}
+				return nil, errors.Newf(errors.ErrorTypeNotFound, "User with email '%s' not found", email)
+			},
+			createSubscriptionFunc: func(requestor, target *entities.User) error {
+				return errors.New(errors.ErrorTypeDatabase, "database connection failed")
+			},
+			wantErr:     true,
+			wantErrType: errors.ErrorTypeDatabase,
+			wantErrMsg:  "database connection failed",
+		},
+		{
+			name:           "duplicate subscription",
+			requestorEmail: "requestor@example.com",
+			targetEmail:    "target@example.com",
+			getUserByEmailFunc: func(email string) (*entities.User, error) {
+				if email == "requestor@example.com" {
+					return &entities.User{ID: 1, Email: "requestor@example.com"}, nil
+				}
+				if email == "target@example.com" {
+					return &entities.User{ID: 2, Email: "target@example.com"}, nil
+				}
+				return nil, errors.Newf(errors.ErrorTypeNotFound, "User with email '%s' not found", email)
+			},
+			createSubscriptionFunc: func(requestor, target *entities.User) error {
+				return errors.New(errors.ErrorTypeBusiness, "Subscription already exists")
+			},
+			wantErr:     true,
+			wantErrType: errors.ErrorTypeBusiness,
+			wantErrMsg:  "Subscription already exists",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockRepo := &mockUserRepo{
+				getUserByEmailFunc:     tt.getUserByEmailFunc,
+				createSubscriptionFunc: tt.createSubscriptionFunc,
+			}
+			controller := NewUserController(mockRepo)
+
+			err := controller.CreateSubscription(tt.requestorEmail, tt.targetEmail)
+
+			if !tt.wantErr {
+				if err != nil {
+					t.Errorf("expected no error, got %v", err)
+				}
+				return
+			}
+
+			if err == nil {
+				t.Errorf("expected error, got nil")
+				return
+			}
+
+			var appErr *errors.AppError
+			if !stderrors.As(err, &appErr) {
+				t.Errorf("expected AppError, got %T", err)
+				return
+			}
+
+			if appErr.Type != tt.wantErrType {
+				t.Errorf("expected error type %s, got %s", tt.wantErrType, appErr.Type)
+			}
+
+			if appErr.Message != tt.wantErrMsg {
+				t.Errorf("expected error message '%s', got '%s'", tt.wantErrMsg, appErr.Message)
+			}
+		})
+	}
+}

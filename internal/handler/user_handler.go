@@ -106,8 +106,24 @@ func (h *UserHandler) GetCommonFriends(c *gin.Context) {
 }
 
 func (h *UserHandler) CreateSubscription(c *gin.Context) {
-	// TODO: Implement subscription handler
-	c.JSON(501, gin.H{"error": "Not implemented"})
+	var req SubscriptionRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		errors.SendBadRequest(c, "Invalid request format", err.Error())
+		return
+	}
+
+	v := validator.New()
+	if ValidateSubscriptionRequest(v, &req); !v.Valid() {
+		errors.HandleValidationErrors(c, v.Errors)
+		return
+	}
+
+	if err := h.userController.CreateSubscription(req.Requestor, req.Target); err != nil {
+		errors.HandleError(c, err)
+		return
+	}
+
+	c.JSON(200, gin.H{"success": true})
 }
 
 func (h *UserHandler) CreateBlock(c *gin.Context) {

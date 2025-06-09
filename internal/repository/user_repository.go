@@ -96,7 +96,7 @@ func (r *userRepository) GetFriendList(user *entities.User) ([]*entities.User, e
 
 	// Collect all friend users
 	friendMap := make(map[int]*entities.User)
-	
+
 	// Add friends from user1 relationships (where current user is user1)
 	for _, friendship := range user1Friends {
 		if friendship.R != nil && friendship.R.User2 != nil {
@@ -165,7 +165,16 @@ func (r *userRepository) GetCommonFriends(user1, user2 *entities.User) ([]*entit
 }
 
 func (r *userRepository) CreateSubscription(requestor, target *entities.User) error {
-	// TODO: Implement subscription creation
+	subscription := &models.Subscription{
+		SubscriberID: requestor.ID,
+		TargetID:     target.ID,
+	}
+
+	err := subscription.Insert(context.Background(), r.db, boil.Infer())
+	if err != nil {
+		return errors.FromError(err)
+	}
+
 	return nil
 }
 
