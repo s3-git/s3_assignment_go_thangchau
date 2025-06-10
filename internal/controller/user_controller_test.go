@@ -7,6 +7,7 @@ import (
 	stderrors "errors"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
 )
 
@@ -108,30 +109,15 @@ func TestCreateFriendships(t *testing.T) {
 			err := controller.CreateFriendship(tt.user1Email, tt.user2Email)
 
 			if !tt.wantErr {
-				if err != nil {
-					t.Errorf("expected no error, got %v", err)
-				}
+				assert.NoError(t, err)
 				return
 			}
 
-			if err == nil {
-				t.Errorf("expected error, got nil")
-				return
-			}
-
+			assert.Error(t, err)
 			var appErr *errors.AppError
-			if !stderrors.As(err, &appErr) {
-				t.Errorf("expected AppError, got %T", err)
-				return
-			}
-
-			if appErr.Type != tt.wantErrType {
-				t.Errorf("expected error type %s, got %s", tt.wantErrType, appErr.Type)
-			}
-
-			if appErr.Message != tt.wantErrMsg {
-				t.Errorf("expected error message '%s', got '%s'", tt.wantErrMsg, appErr.Message)
-			}
+			assert.True(t, stderrors.As(err, &appErr))
+			assert.Equal(t, tt.wantErrType, appErr.Type)
+			assert.Equal(t, tt.wantErrMsg, appErr.Message)
 		})
 	}
 }
@@ -211,42 +197,20 @@ func TestGetFriendList(t *testing.T) {
 			friends, err := controller.GetFriendList(tt.email)
 
 			if !tt.wantErr {
-				if err != nil {
-					t.Errorf("expected no error, got %v", err)
-					return
-				}
-
-				if len(friends) != len(tt.expectedFriends) {
-					t.Errorf("expected %d friends, got %d", len(tt.expectedFriends), len(friends))
-					return
-				}
-
+				assert.NoError(t, err)
+				assert.Equal(t, len(tt.expectedFriends), len(friends))
 				for i, expectedFriend := range tt.expectedFriends {
-					if friends[i].ID != expectedFriend.ID || friends[i].Email != expectedFriend.Email {
-						t.Errorf("expected friend %v, got %v", expectedFriend, friends[i])
-					}
+					assert.Equal(t, expectedFriend.ID, friends[i].ID)
+					assert.Equal(t, expectedFriend.Email, friends[i].Email)
 				}
 				return
 			}
 
-			if err == nil {
-				t.Errorf("expected error, got nil")
-				return
-			}
-
+			assert.Error(t, err)
 			var appErr *errors.AppError
-			if !stderrors.As(err, &appErr) {
-				t.Errorf("expected AppError, got %T", err)
-				return
-			}
-
-			if appErr.Type != tt.wantErrType {
-				t.Errorf("expected error type %s, got %s", tt.wantErrType, appErr.Type)
-			}
-
-			if appErr.Message != tt.wantErrMsg {
-				t.Errorf("expected error message '%s', got '%s'", tt.wantErrMsg, appErr.Message)
-			}
+			assert.True(t, stderrors.As(err, &appErr))
+			assert.Equal(t, tt.wantErrType, appErr.Type)
+			assert.Equal(t, tt.wantErrMsg, appErr.Message)
 		})
 	}
 }
@@ -361,42 +325,20 @@ func TestGetCommonFriends(t *testing.T) {
 			commonFriends, err := controller.GetCommonFriends(tt.email1, tt.email2)
 
 			if !tt.wantErr {
-				if err != nil {
-					t.Errorf("expected no error, got %v", err)
-					return
-				}
-
-				if len(commonFriends) != len(tt.expectedCommonFriends) {
-					t.Errorf("expected %d common friends, got %d", len(tt.expectedCommonFriends), len(commonFriends))
-					return
-				}
-
+				assert.NoError(t, err)
+				assert.Equal(t, len(tt.expectedCommonFriends), len(commonFriends))
 				for i, expectedFriend := range tt.expectedCommonFriends {
-					if commonFriends[i].ID != expectedFriend.ID || commonFriends[i].Email != expectedFriend.Email {
-						t.Errorf("expected common friend %v, got %v", expectedFriend, commonFriends[i])
-					}
+					assert.Equal(t, expectedFriend.ID, commonFriends[i].ID)
+					assert.Equal(t, expectedFriend.Email, commonFriends[i].Email)
 				}
 				return
 			}
 
-			if err == nil {
-				t.Errorf("expected error, got nil")
-				return
-			}
-
+			assert.Error(t, err)
 			var appErr *errors.AppError
-			if !stderrors.As(err, &appErr) {
-				t.Errorf("expected AppError, got %T", err)
-				return
-			}
-
-			if appErr.Type != tt.wantErrType {
-				t.Errorf("expected error type %s, got %s", tt.wantErrType, appErr.Type)
-			}
-
-			if appErr.Message != tt.wantErrMsg {
-				t.Errorf("expected error message '%s', got '%s'", tt.wantErrMsg, appErr.Message)
-			}
+			assert.True(t, stderrors.As(err, &appErr))
+			assert.Equal(t, tt.wantErrType, appErr.Type)
+			assert.Equal(t, tt.wantErrMsg, appErr.Message)
 		})
 	}
 }
@@ -540,30 +482,15 @@ func TestCreateSubscription(t *testing.T) {
 			err := controller.CreateSubscription(tt.requestorEmail, tt.targetEmail)
 
 			if !tt.wantErr {
-				if err != nil {
-					t.Errorf("expected no error, got %v", err)
-				}
+				assert.NoError(t, err)
 				return
 			}
 
-			if err == nil {
-				t.Errorf("expected error, got nil")
-				return
-			}
-
+			assert.Error(t, err)
 			var appErr *errors.AppError
-			if !stderrors.As(err, &appErr) {
-				t.Errorf("expected AppError, got %T", err)
-				return
-			}
-
-			if appErr.Type != tt.wantErrType {
-				t.Errorf("expected error type %s, got %s", tt.wantErrType, appErr.Type)
-			}
-
-			if appErr.Message != tt.wantErrMsg {
-				t.Errorf("expected error message '%s', got '%s'", tt.wantErrMsg, appErr.Message)
-			}
+			assert.True(t, stderrors.As(err, &appErr))
+			assert.Equal(t, tt.wantErrType, appErr.Type)
+			assert.Equal(t, tt.wantErrMsg, appErr.Message)
 		})
 	}
 }
@@ -688,30 +615,15 @@ func TestCreateBlock(t *testing.T) {
 			err := controller.CreateBlock(tt.requestorEmail, tt.targetEmail)
 
 			if !tt.wantErr {
-				if err != nil {
-					t.Errorf("expected no error, got %v", err)
-				}
+				assert.NoError(t, err)
 				return
 			}
 
-			if err == nil {
-				t.Errorf("expected error, got nil")
-				return
-			}
-
+			assert.Error(t, err)
 			var appErr *errors.AppError
-			if !stderrors.As(err, &appErr) {
-				t.Errorf("expected AppError, got %T", err)
-				return
-			}
-
-			if appErr.Type != tt.wantErrType {
-				t.Errorf("expected error type %s, got %s", tt.wantErrType, appErr.Type)
-			}
-
-			if appErr.Message != tt.wantErrMsg {
-				t.Errorf("expected error message '%s', got '%s'", tt.wantErrMsg, appErr.Message)
-			}
+			assert.True(t, stderrors.As(err, &appErr))
+			assert.Equal(t, tt.wantErrType, appErr.Type)
+			assert.Equal(t, tt.wantErrMsg, appErr.Message)
 		})
 	}
 }

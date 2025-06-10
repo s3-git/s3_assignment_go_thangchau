@@ -2,7 +2,7 @@ package handler
 
 import (
 	"assignment/internal/domain/entities"
-	"assignment/internal/domain/interfaces"
+	"assignment/mocks"
 	"assignment/pkg/errors"
 	"bytes"
 	"net/http"
@@ -11,70 +11,27 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/mock/gomock"
 )
 
-type mockUserController struct {
-	createFriendshipsFunc  func(string, string) error
-	getFriendListFunc      func(string) ([]*entities.User, error)
-	getCommonFriendsFunc   func(string, string) ([]*entities.User, error)
-	createSubscriptionFunc func(string, string) error
-	createBlockFunc        func(string, string) error
-}
-
-func (m *mockUserController) CreateFriendship(u1, u2 string) error {
-	if m.createFriendshipsFunc != nil {
-		return m.createFriendshipsFunc(u1, u2)
-	}
-	return nil
-}
-
-func (m *mockUserController) GetFriendList(email string) ([]*entities.User, error) {
-	if m.getFriendListFunc != nil {
-		return m.getFriendListFunc(email)
-	}
-	return []*entities.User{}, nil
-}
-
-func (m *mockUserController) GetCommonFriends(email1, email2 string) ([]*entities.User, error) {
-	if m.getCommonFriendsFunc != nil {
-		return m.getCommonFriendsFunc(email1, email2)
-	}
-	return []*entities.User{}, nil
-}
-
-func (m *mockUserController) CreateSubscription(requestorEmail, targetEmail string) error {
-	if m.createSubscriptionFunc != nil {
-		return m.createSubscriptionFunc(requestorEmail, targetEmail)
-	}
-	return nil
-}
-
-func (m *mockUserController) CreateBlock(requestorEmail, targetEmail string) error {
-	if m.createBlockFunc != nil {
-		return m.createBlockFunc(requestorEmail, targetEmail)
-	}
-	return nil
-}
-
-func (m *mockUserController) GetRecipients(senderEmail, text string) ([]*entities.User, error) {
-	return []*entities.User{}, nil
-}
-
 func TestCreateFriendships(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
 	gin.SetMode(gin.TestMode)
 
 	tests := []struct {
 		name           string
 		body           string
-		mockFunc       func(string, string) error
+		setupMock      func(mockController *mocks.MockUserControllerInterface)
 		expectedStatus int
 		expectedBody   string
 	}{
 		{
 			name: "success",
 			body: `{"friends":["andy@example.com", "john@example.com"]}`,
-			mockFunc: func(u1, u2 string) error {
-				return nil
+			setupMock: func(mockController *mocks.MockUserControllerInterface) {
+				mockController.EXPECT().CreateFriendship("andy@example.com", "john@example.com").Return(nil)
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody:   `{"success":true}`,
@@ -82,8 +39,8 @@ func TestCreateFriendships(t *testing.T) {
 		{
 			name: "missing email validation",
 			body: `{"friends":["andy@example.com"]}`,
-			mockFunc: func(u1, u2 string) error {
-				return errors.New(errors.ErrorTypeValidation, "invalid body")
+			setupMock: func(mockController *mocks.MockUserControllerInterface) {
+				// No mock expectations needed as validation happens before controller calls
 			},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   `{"success":false,"error":{"type":"VALIDATION_ERROR","message":"Validation failed","details":"emails count: exactly 2 emails required"}}`,
@@ -91,8 +48,8 @@ func TestCreateFriendships(t *testing.T) {
 		{
 			name: "user not found error",
 			body: `{"friends":["andy@example.com", "john@example.com"]}`,
-			mockFunc: func(u1, u2 string) error {
-				return errors.Newf(errors.ErrorTypeNotFound, "User with email '%s' not found", "andy@example.com")
+			setupMock: func(mockController *mocks.MockUserControllerInterface) {
+				mockController.EXPECT().CreateFriendship("andy@example.com", "john@example.com").Return(errors.Newf(errors.ErrorTypeNotFound, "User with email '%s' not found", "andy@example.com"))
 			},
 			expectedStatus: http.StatusNotFound,
 			expectedBody:   `{"success":false,"error":{"type":"NOT_FOUND","message":"User with email 'andy@example.com' not found"}}`,
@@ -100,16 +57,18 @@ func TestCreateFriendships(t *testing.T) {
 		{
 			name: "cannot friend self",
 			body: `{"friends":["andy@example.com", "john@example.com"]}`,
-			mockFunc: func(u1, u2 string) error {
-				return errors.ErrCannotFriendSelf
+			setupMock: func(mockController *mocks.MockUserControllerInterface) {
+				mockController.EXPECT().CreateFriendship("andy@example.com", "john@example.com").Return(errors.New(errors.ErrorTypeBusiness, "Cannot add yourself as a friend"))
 			},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   `{"success":false,"error":{"type":"BUSINESS_ERROR","message":"Cannot add yourself as a friend"}}`,
 		},
 		{
-			name:           "invalid json",
-			body:           `{"friends": [}`,
-			mockFunc:       nil,
+			name: "invalid json",
+			body: `{"friends": [}`,
+			setupMock: func(mockController *mocks.MockUserControllerInterface) {
+				// No mock expectations needed as validation happens before controller calls
+			},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   `{"success":false,"error":{"type":"VALIDATION_ERROR","message":"Invalid request format","details":"invalid character '}' looking for beginning of value"}}`,
 		},
@@ -117,12 +76,8 @@ func TestCreateFriendships(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var mockController interfaces.UserControllerInterface
-			if tt.mockFunc != nil {
-				mockController = &mockUserController{createFriendshipsFunc: tt.mockFunc}
-			} else {
-				mockController = &mockUserController{}
-			}
+			mockController := mocks.NewMockUserControllerInterface(ctrl)
+			tt.setupMock(mockController)
 
 			handler := NewUserHandler(mockController)
 
@@ -145,23 +100,26 @@ func TestCreateFriendships(t *testing.T) {
 }
 
 func TestGetFriendList(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
 	gin.SetMode(gin.TestMode)
 
 	tests := []struct {
 		name           string
 		body           string
-		mockFunc       func(string) ([]*entities.User, error)
+		setupMock      func(mockController *mocks.MockUserControllerInterface)
 		expectedStatus int
 		expectedBody   string
 	}{
 		{
 			name: "success with friends",
 			body: `{"email":"andy@example.com"}`,
-			mockFunc: func(email string) ([]*entities.User, error) {
-				return []*entities.User{
+			setupMock: func(mockController *mocks.MockUserControllerInterface) {
+				mockController.EXPECT().GetFriendList("andy@example.com").Return([]*entities.User{
 					{ID: 1, Email: "john@example.com"},
 					{ID: 2, Email: "jane@example.com"},
-				}, nil
+				}, nil)
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody:   `{"success":true,"friends":["john@example.com","jane@example.com"],"count":2}`,
@@ -169,8 +127,8 @@ func TestGetFriendList(t *testing.T) {
 		{
 			name: "success with no friends",
 			body: `{"email":"andy@example.com"}`,
-			mockFunc: func(email string) ([]*entities.User, error) {
-				return []*entities.User{}, nil
+			setupMock: func(mockController *mocks.MockUserControllerInterface) {
+				mockController.EXPECT().GetFriendList("andy@example.com").Return([]*entities.User{}, nil)
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody:   `{"success":true,"friends":[],"count":0}`,
@@ -178,30 +136,36 @@ func TestGetFriendList(t *testing.T) {
 		{
 			name: "user not found error",
 			body: `{"email":"nonexistent@example.com"}`,
-			mockFunc: func(email string) ([]*entities.User, error) {
-				return nil, errors.Newf(errors.ErrorTypeNotFound, "User with email '%s' not found", email)
+			setupMock: func(mockController *mocks.MockUserControllerInterface) {
+				mockController.EXPECT().GetFriendList("nonexistent@example.com").Return(nil, errors.Newf(errors.ErrorTypeNotFound, "User with email '%s' not found", "nonexistent@example.com"))
 			},
 			expectedStatus: http.StatusNotFound,
 			expectedBody:   `{"success":false,"error":{"type":"NOT_FOUND","message":"User with email 'nonexistent@example.com' not found"}}`,
 		},
 		{
-			name:           "invalid email format",
-			body:           `{"email":"invalid-email"}`,
-			mockFunc:       nil,
+			name: "invalid email format",
+			body: `{"email":"invalid-email"}`,
+			setupMock: func(mockController *mocks.MockUserControllerInterface) {
+				// No mock expectations needed as validation happens before controller calls
+			},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   `{"success":false,"error":{"type":"VALIDATION_ERROR","message":"Validation failed","details":"email: must be valid email address"}}`,
 		},
 		{
-			name:           "empty email",
-			body:           `{"email":""}`,
-			mockFunc:       nil,
+			name: "empty email",
+			body: `{"email":""}`,
+			setupMock: func(mockController *mocks.MockUserControllerInterface) {
+				// No mock expectations needed as validation happens before controller calls
+			},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   `{"success":false,"error":{"type":"VALIDATION_ERROR","message":"Validation failed","details":"email: must be provided"}}`,
 		},
 		{
-			name:           "invalid json",
-			body:           `{"email": }`,
-			mockFunc:       nil,
+			name: "invalid json",
+			body: `{"email": }`,
+			setupMock: func(mockController *mocks.MockUserControllerInterface) {
+				// No mock expectations needed as validation happens before controller calls
+			},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   `{"success":false,"error":{"type":"VALIDATION_ERROR","message":"Invalid request format","details":"invalid character '}' looking for beginning of value"}}`,
 		},
@@ -209,12 +173,8 @@ func TestGetFriendList(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var mockController interfaces.UserControllerInterface
-			if tt.mockFunc != nil {
-				mockController = &mockUserController{getFriendListFunc: tt.mockFunc}
-			} else {
-				mockController = &mockUserController{}
-			}
+			mockController := mocks.NewMockUserControllerInterface(ctrl)
+			tt.setupMock(mockController)
 
 			handler := NewUserHandler(mockController)
 
@@ -237,23 +197,26 @@ func TestGetFriendList(t *testing.T) {
 }
 
 func TestGetCommonFriends(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
 	gin.SetMode(gin.TestMode)
 
 	tests := []struct {
 		name           string
 		body           string
-		mockFunc       func(string, string) ([]*entities.User, error)
+		setupMock      func(mockController *mocks.MockUserControllerInterface)
 		expectedStatus int
 		expectedBody   string
 	}{
 		{
 			name: "success with common friends",
 			body: `{"friends":["andy@example.com", "john@example.com"]}`,
-			mockFunc: func(email1, email2 string) ([]*entities.User, error) {
-				return []*entities.User{
+			setupMock: func(mockController *mocks.MockUserControllerInterface) {
+				mockController.EXPECT().GetCommonFriends("andy@example.com", "john@example.com").Return([]*entities.User{
 					{ID: 3, Email: "common@example.com"},
 					{ID: 4, Email: "mutual@example.com"},
-				}, nil
+				}, nil)
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody:   `{"success":true,"friends":["common@example.com","mutual@example.com"],"count":2}`,
@@ -261,8 +224,8 @@ func TestGetCommonFriends(t *testing.T) {
 		{
 			name: "success with no common friends",
 			body: `{"friends":["andy@example.com", "john@example.com"]}`,
-			mockFunc: func(email1, email2 string) ([]*entities.User, error) {
-				return []*entities.User{}, nil
+			setupMock: func(mockController *mocks.MockUserControllerInterface) {
+				mockController.EXPECT().GetCommonFriends("andy@example.com", "john@example.com").Return([]*entities.User{}, nil)
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody:   `{"success":true,"friends":[],"count":0}`,
@@ -270,37 +233,45 @@ func TestGetCommonFriends(t *testing.T) {
 		{
 			name: "user not found error",
 			body: `{"friends":["nonexistent@example.com", "john@example.com"]}`,
-			mockFunc: func(email1, email2 string) ([]*entities.User, error) {
-				return nil, errors.Newf(errors.ErrorTypeNotFound, "User with email '%s' not found", email1)
+			setupMock: func(mockController *mocks.MockUserControllerInterface) {
+				mockController.EXPECT().GetCommonFriends("nonexistent@example.com", "john@example.com").Return(nil, errors.Newf(errors.ErrorTypeNotFound, "User with email '%s' not found", "nonexistent@example.com"))
 			},
 			expectedStatus: http.StatusNotFound,
 			expectedBody:   `{"success":false,"error":{"type":"NOT_FOUND","message":"User with email 'nonexistent@example.com' not found"}}`,
 		},
 		{
-			name:           "missing email validation",
-			body:           `{"friends":["andy@example.com"]}`,
-			mockFunc:       nil,
+			name: "missing email validation",
+			body: `{"friends":["andy@example.com"]}`,
+			setupMock: func(mockController *mocks.MockUserControllerInterface) {
+				// No mock expectations needed as validation happens before controller calls
+			},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   `{"success":false,"error":{"type":"VALIDATION_ERROR","message":"Validation failed","details":"emails count: exactly 2 emails required"}}`,
 		},
 		{
-			name:           "invalid email format",
-			body:           `{"friends":["invalid-email", "john@example.com"]}`,
-			mockFunc:       nil,
+			name: "invalid email format",
+			body: `{"friends":["invalid-email", "john@example.com"]}`,
+			setupMock: func(mockController *mocks.MockUserControllerInterface) {
+				// No mock expectations needed as validation happens before controller calls
+			},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   `{"success":false,"error":{"type":"VALIDATION_ERROR","message":"Validation failed","details":"email: must be valid email address"}}`,
 		},
 		{
-			name:           "empty email",
-			body:           `{"friends":["", "john@example.com"]}`,
-			mockFunc:       nil,
+			name: "empty email",
+			body: `{"friends":["", "john@example.com"]}`,
+			setupMock: func(mockController *mocks.MockUserControllerInterface) {
+				// No mock expectations needed as validation happens before controller calls
+			},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   `{"success":false,"error":{"type":"VALIDATION_ERROR","message":"Validation failed","details":"email: email cannot be empty"}}`,
 		},
 		{
-			name:           "invalid json",
-			body:           `{"friends": [}`,
-			mockFunc:       nil,
+			name: "invalid json",
+			body: `{"friends": [}`,
+			setupMock: func(mockController *mocks.MockUserControllerInterface) {
+				// No mock expectations needed as validation happens before controller calls
+			},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   `{"success":false,"error":{"type":"VALIDATION_ERROR","message":"Invalid request format","details":"invalid character '}' looking for beginning of value"}}`,
 		},
@@ -308,12 +279,8 @@ func TestGetCommonFriends(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var mockController interfaces.UserControllerInterface
-			if tt.mockFunc != nil {
-				mockController = &mockUserController{getCommonFriendsFunc: tt.mockFunc}
-			} else {
-				mockController = &mockUserController{}
-			}
+			mockController := mocks.NewMockUserControllerInterface(ctrl)
+			tt.setupMock(mockController)
 
 			handler := NewUserHandler(mockController)
 
@@ -336,20 +303,23 @@ func TestGetCommonFriends(t *testing.T) {
 }
 
 func TestCreateSubscription(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
 	gin.SetMode(gin.TestMode)
 
 	tests := []struct {
 		name           string
 		body           string
-		mockFunc       func(string, string) error
+		setupMock      func(mockController *mocks.MockUserControllerInterface)
 		expectedStatus int
 		expectedBody   string
 	}{
 		{
 			name: "success",
 			body: `{"requestor":"andy@example.com","target":"john@example.com"}`,
-			mockFunc: func(requestor, target string) error {
-				return nil
+			setupMock: func(mockController *mocks.MockUserControllerInterface) {
+				mockController.EXPECT().CreateSubscription("andy@example.com", "john@example.com").Return(nil)
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody:   `{"success":true}`,
@@ -357,8 +327,8 @@ func TestCreateSubscription(t *testing.T) {
 		{
 			name: "user not found error - requestor",
 			body: `{"requestor":"nonexistent@example.com","target":"john@example.com"}`,
-			mockFunc: func(requestor, target string) error {
-				return errors.Newf(errors.ErrorTypeNotFound, "User not found: %s", requestor)
+			setupMock: func(mockController *mocks.MockUserControllerInterface) {
+				mockController.EXPECT().CreateSubscription("nonexistent@example.com", "john@example.com").Return(errors.Newf(errors.ErrorTypeNotFound, "User not found: %s", "nonexistent@example.com"))
 			},
 			expectedStatus: http.StatusNotFound,
 			expectedBody:   `{"success":false,"error":{"type":"NOT_FOUND","message":"User not found: nonexistent@example.com"}}`,
@@ -366,8 +336,8 @@ func TestCreateSubscription(t *testing.T) {
 		{
 			name: "user not found error - target", 
 			body: `{"requestor":"andy@example.com","target":"nonexistent@example.com"}`,
-			mockFunc: func(requestor, target string) error {
-				return errors.Newf(errors.ErrorTypeNotFound, "User not found: %s", target)
+			setupMock: func(mockController *mocks.MockUserControllerInterface) {
+				mockController.EXPECT().CreateSubscription("andy@example.com", "nonexistent@example.com").Return(errors.Newf(errors.ErrorTypeNotFound, "User not found: %s", "nonexistent@example.com"))
 			},
 			expectedStatus: http.StatusNotFound,
 			expectedBody:   `{"success":false,"error":{"type":"NOT_FOUND","message":"User not found: nonexistent@example.com"}}`,
@@ -375,8 +345,8 @@ func TestCreateSubscription(t *testing.T) {
 		{
 			name: "database error",
 			body: `{"requestor":"andy@example.com","target":"john@example.com"}`,
-			mockFunc: func(requestor, target string) error {
-				return errors.New(errors.ErrorTypeDatabase, "Database connection failed")
+			setupMock: func(mockController *mocks.MockUserControllerInterface) {
+				mockController.EXPECT().CreateSubscription("andy@example.com", "john@example.com").Return(errors.New(errors.ErrorTypeDatabase, "Database connection failed"))
 			},
 			expectedStatus: http.StatusInternalServerError,
 			expectedBody:   `{"success":false,"error":{"type":"DATABASE_ERROR","message":"Database connection failed"}}`,
@@ -384,42 +354,54 @@ func TestCreateSubscription(t *testing.T) {
 		{
 			name:           "empty requestor email",
 			body:           `{"requestor":"","target":"john@example.com"}`,
-			mockFunc:       nil,
+			setupMock: func(mockController *mocks.MockUserControllerInterface) {
+				// No mock expectations needed as validation happens before controller calls
+			},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   `{"success":false,"error":{"type":"VALIDATION_ERROR","message":"Validation failed","details":"requestor: requestor email cannot be empty; email: must be provided"}}`,
 		},
 		{
 			name:           "empty target email",
 			body:           `{"requestor":"andy@example.com","target":""}`,
-			mockFunc:       nil,
+			setupMock: func(mockController *mocks.MockUserControllerInterface) {
+				// No mock expectations needed as validation happens before controller calls
+			},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   `{"success":false,"error":{"type":"VALIDATION_ERROR","message":"Validation failed","details":"target: target email cannot be empty; email: must be provided"}}`,
 		},
 		{
 			name:           "invalid requestor email format",
 			body:           `{"requestor":"invalid-email","target":"john@example.com"}`,
-			mockFunc:       nil,
+			setupMock: func(mockController *mocks.MockUserControllerInterface) {
+				// No mock expectations needed as validation happens before controller calls
+			},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   `{"success":false,"error":{"type":"VALIDATION_ERROR","message":"Validation failed","details":"email: must be valid email address"}}`,
 		},
 		{
 			name:           "invalid target email format",
 			body:           `{"requestor":"andy@example.com","target":"invalid-email"}`,
-			mockFunc:       nil,
+			setupMock: func(mockController *mocks.MockUserControllerInterface) {
+				// No mock expectations needed as validation happens before controller calls
+			},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   `{"success":false,"error":{"type":"VALIDATION_ERROR","message":"Validation failed","details":"email: must be valid email address"}}`,
 		},
 		{
 			name:           "same requestor and target",
 			body:           `{"requestor":"andy@example.com","target":"andy@example.com"}`,
-			mockFunc:       nil,
+			setupMock: func(mockController *mocks.MockUserControllerInterface) {
+				// No mock expectations needed as validation happens before controller calls
+			},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   `{"success":false,"error":{"type":"VALIDATION_ERROR","message":"Validation failed","details":"emails: requestor and target cannot be the same"}}`,
 		},
 		{
 			name:           "invalid json",
 			body:           `{"requestor": }`,
-			mockFunc:       nil,
+			setupMock: func(mockController *mocks.MockUserControllerInterface) {
+				// No mock expectations needed as validation happens before controller calls
+			},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   `{"success":false,"error":{"type":"VALIDATION_ERROR","message":"Invalid request format","details":"invalid character '}' looking for beginning of value"}}`,
 		},
@@ -427,12 +409,8 @@ func TestCreateSubscription(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var mockController interfaces.UserControllerInterface
-			if tt.mockFunc != nil {
-				mockController = &mockUserController{createSubscriptionFunc: tt.mockFunc}
-			} else {
-				mockController = &mockUserController{}
-			}
+			mockController := mocks.NewMockUserControllerInterface(ctrl)
+			tt.setupMock(mockController)
 
 			handler := NewUserHandler(mockController)
 
@@ -454,20 +432,23 @@ func TestCreateSubscription(t *testing.T) {
 	}
 }
 func TestCreateBlock(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
 	gin.SetMode(gin.TestMode)
 
 	tests := []struct {
 		name           string
 		body           string
-		mockFunc       func(string, string) error
+		setupMock      func(mockController *mocks.MockUserControllerInterface)
 		expectedStatus int
 		expectedBody   string
 	}{
 		{
 			name: "success",
 			body: `{"requestor":"andy@example.com","target":"john@example.com"}`,
-			mockFunc: func(requestor, target string) error {
-				return nil
+			setupMock: func(mockController *mocks.MockUserControllerInterface) {
+				mockController.EXPECT().CreateBlock("andy@example.com", "john@example.com").Return(nil)
 			},
 			expectedStatus: http.StatusOK,
 			expectedBody:   `{"success":true}`,
@@ -475,8 +456,8 @@ func TestCreateBlock(t *testing.T) {
 		{
 			name: "user not found error - requestor",
 			body: `{"requestor":"nonexistent@example.com","target":"john@example.com"}`,
-			mockFunc: func(requestor, target string) error {
-				return errors.Newf(errors.ErrorTypeNotFound, "User not found: %s", requestor)
+			setupMock: func(mockController *mocks.MockUserControllerInterface) {
+				mockController.EXPECT().CreateBlock("nonexistent@example.com", "john@example.com").Return(errors.Newf(errors.ErrorTypeNotFound, "User not found: %s", "nonexistent@example.com"))
 			},
 			expectedStatus: http.StatusNotFound,
 			expectedBody:   `{"success":false,"error":{"type":"NOT_FOUND","message":"User not found: nonexistent@example.com"}}`,
@@ -484,8 +465,8 @@ func TestCreateBlock(t *testing.T) {
 		{
 			name: "user not found error - target",
 			body: `{"requestor":"andy@example.com","target":"nonexistent@example.com"}`,
-			mockFunc: func(requestor, target string) error {
-				return errors.Newf(errors.ErrorTypeNotFound, "User not found: %s", target)
+			setupMock: func(mockController *mocks.MockUserControllerInterface) {
+				mockController.EXPECT().CreateBlock("andy@example.com", "nonexistent@example.com").Return(errors.Newf(errors.ErrorTypeNotFound, "User not found: %s", "nonexistent@example.com"))
 			},
 			expectedStatus: http.StatusNotFound,
 			expectedBody:   `{"success":false,"error":{"type":"NOT_FOUND","message":"User not found: nonexistent@example.com"}}`,
@@ -493,8 +474,8 @@ func TestCreateBlock(t *testing.T) {
 		{
 			name: "database error",
 			body: `{"requestor":"andy@example.com","target":"john@example.com"}`,
-			mockFunc: func(requestor, target string) error {
-				return errors.New(errors.ErrorTypeDatabase, "Database connection failed")
+			setupMock: func(mockController *mocks.MockUserControllerInterface) {
+				mockController.EXPECT().CreateBlock("andy@example.com", "john@example.com").Return(errors.New(errors.ErrorTypeDatabase, "Database connection failed"))
 			},
 			expectedStatus: http.StatusInternalServerError,
 			expectedBody:   `{"success":false,"error":{"type":"DATABASE_ERROR","message":"Database connection failed"}}`,
@@ -502,56 +483,72 @@ func TestCreateBlock(t *testing.T) {
 		{
 			name:           "empty requestor email",
 			body:           `{"requestor":"","target":"john@example.com"}`,
-			mockFunc:       nil,
+			setupMock: func(mockController *mocks.MockUserControllerInterface) {
+				// No mock expectations needed as validation happens before controller calls
+			},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   `{"success":false,"error":{"type":"VALIDATION_ERROR","message":"Invalid request format","details":"Key: 'CreateBlockRequest.Requestor' Error:Field validation for 'Requestor' failed on the 'required' tag"}}`,
 		},
 		{
 			name:           "empty target email",
 			body:           `{"requestor":"andy@example.com","target":""}`,
-			mockFunc:       nil,
+			setupMock: func(mockController *mocks.MockUserControllerInterface) {
+				// No mock expectations needed as validation happens before controller calls
+			},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   `{"success":false,"error":{"type":"VALIDATION_ERROR","message":"Invalid request format","details":"Key: 'CreateBlockRequest.Target' Error:Field validation for 'Target' failed on the 'required' tag"}}`,
 		},
 		{
 			name:           "invalid requestor email format",
 			body:           `{"requestor":"invalid-email","target":"john@example.com"}`,
-			mockFunc:       nil,
+			setupMock: func(mockController *mocks.MockUserControllerInterface) {
+				// No mock expectations needed as validation happens before controller calls
+			},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   `{"success":false,"error":{"type":"VALIDATION_ERROR","message":"Invalid request format","details":"Key: 'CreateBlockRequest.Requestor' Error:Field validation for 'Requestor' failed on the 'email' tag"}}`,
 		},
 		{
 			name:           "invalid target email format",
 			body:           `{"requestor":"andy@example.com","target":"invalid-email"}`,
-			mockFunc:       nil,
+			setupMock: func(mockController *mocks.MockUserControllerInterface) {
+				// No mock expectations needed as validation happens before controller calls
+			},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   `{"success":false,"error":{"type":"VALIDATION_ERROR","message":"Invalid request format","details":"Key: 'CreateBlockRequest.Target' Error:Field validation for 'Target' failed on the 'email' tag"}}`,
 		},
 		{
 			name:           "same requestor and target",
 			body:           `{"requestor":"andy@example.com","target":"andy@example.com"}`,
-			mockFunc:       nil,
+			setupMock: func(mockController *mocks.MockUserControllerInterface) {
+				// No mock expectations needed as validation happens before controller calls
+			},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   `{"success":false,"error":{"type":"VALIDATION_ERROR","message":"Validation failed","details":"emails: cannot block yourself"}}`,
 		},
 		{
 			name:           "invalid json",
 			body:           `{"requestor": }`,
-			mockFunc:       nil,
+			setupMock: func(mockController *mocks.MockUserControllerInterface) {
+				// No mock expectations needed as validation happens before controller calls
+			},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   `{"success":false,"error":{"type":"VALIDATION_ERROR","message":"Invalid request format","details":"invalid character '}' looking for beginning of value"}}`,
 		},
 		{
 			name:           "missing requestor field",
 			body:           `{"target":"john@example.com"}`,
-			mockFunc:       nil,
+			setupMock: func(mockController *mocks.MockUserControllerInterface) {
+				// No mock expectations needed as validation happens before controller calls
+			},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   `{"success":false,"error":{"type":"VALIDATION_ERROR","message":"Invalid request format","details":"Key: 'CreateBlockRequest.Requestor' Error:Field validation for 'Requestor' failed on the 'required' tag"}}`,
 		},
 		{
 			name:           "missing target field",
 			body:           `{"requestor":"andy@example.com"}`,
-			mockFunc:       nil,
+			setupMock: func(mockController *mocks.MockUserControllerInterface) {
+				// No mock expectations needed as validation happens before controller calls
+			},
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   `{"success":false,"error":{"type":"VALIDATION_ERROR","message":"Invalid request format","details":"Key: 'CreateBlockRequest.Target' Error:Field validation for 'Target' failed on the 'required' tag"}}`,
 		},
@@ -559,12 +556,8 @@ func TestCreateBlock(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var mockController interfaces.UserControllerInterface
-			if tt.mockFunc != nil {
-				mockController = &mockUserController{createBlockFunc: tt.mockFunc}
-			} else {
-				mockController = &mockUserController{}
-			}
+			mockController := mocks.NewMockUserControllerInterface(ctrl)
+			tt.setupMock(mockController)
 
 			handler := NewUserHandler(mockController)
 

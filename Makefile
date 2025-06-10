@@ -16,8 +16,13 @@ test-integration:
 install-mockgen:
 	go install go.uber.org/mock/mockgen@latest
 
-generate-mocks:
+generate-repo-mocks:
 	mockgen -source=internal/domain/interfaces/repository.go -destination=mocks/mock_repository.go -package=mocks
+
+generate-controller-mocks:
+	mockgen -source=internal/domain/interfaces/controller.go -destination=mocks/mock_controller.go -package=mocks
+
+generate-mocks: generate-repo-mocks generate-controller-mocks
 
 # Clean generated files
 clean-mocks:
