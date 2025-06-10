@@ -2,121 +2,64 @@ package controller
 
 import (
 	"assignment/internal/domain/entities"
+	"assignment/mocks"
 	"assignment/pkg/errors"
 	stderrors "errors"
 	"testing"
+
+	"go.uber.org/mock/gomock"
 )
 
-// mockUserRepo implements interfaces.UserRepositoryInterface for testing
-type mockUserRepo struct {
-	createFriendshipFunc        func(user1, user2 *entities.User) error
-	getUserByEmailFunc          func(email string) (*entities.User, error)
-	getFriendListFunc           func(user *entities.User) ([]*entities.User, error)
-	getCommonFriendsFunc        func(user1, user2 *entities.User) ([]*entities.User, error)
-	createSubscriptionFunc      func(requestor, target *entities.User) error
-	createBlockTxFunc           func(requestor, target *entities.User) error
-	checkBlockExistsFunc        func(requestorID, targetID int) (bool, error)
-	checkBidirectionalBlockFunc func(user1ID, user2ID int) (bool, error)
-}
-
-func (m *mockUserRepo) CreateFriendship(user1, user2 *entities.User) error {
-	if m.createFriendshipFunc != nil {
-		return m.createFriendshipFunc(user1, user2)
-	}
-	return nil
-}
-
-func (m *mockUserRepo) GetFriendList(user *entities.User) ([]*entities.User, error) {
-	if m.getFriendListFunc != nil {
-		return m.getFriendListFunc(user)
-	}
-	return []*entities.User{}, nil
-}
-
-func (m *mockUserRepo) GetCommonFriends(user1, user2 *entities.User) ([]*entities.User, error) {
-	if m.getCommonFriendsFunc != nil {
-		return m.getCommonFriendsFunc(user1, user2)
-	}
-	return []*entities.User{}, nil
-}
-
-func (m *mockUserRepo) CreateSubscription(requestor, target *entities.User) error {
-	if m.createSubscriptionFunc != nil {
-		return m.createSubscriptionFunc(requestor, target)
-	}
-	return nil
-}
-
-func (m *mockUserRepo) CreateBlockTx(requestor, target *entities.User) error {
-	if m.createBlockTxFunc != nil {
-		return m.createBlockTxFunc(requestor, target)
-	}
-	return nil
-}
-
-func (m *mockUserRepo) CheckBlockExists(requestorID, targetID int) (bool, error) {
-	if m.checkBlockExistsFunc != nil {
-		return m.checkBlockExistsFunc(requestorID, targetID)
-	}
-	return false, nil
-}
-
-func (m *mockUserRepo) CheckBidirectionalBlock(user1ID, user2ID int) (bool, error) {
-	if m.checkBidirectionalBlockFunc != nil {
-		return m.checkBidirectionalBlockFunc(user1ID, user2ID)
-	}
-	return false, nil
-}
-
-
-func (m *mockUserRepo) GetRecipients(sender *entities.User, mentionedUsers []*entities.User) ([]*entities.User, error) {
-	return []*entities.User{}, nil
-}
-
-func (m *mockUserRepo) UserExists(email string) (*entities.User, error) {
-	return &entities.User{ID: 1, Email: email}, nil
-}
-
-func (m *mockUserRepo) GetUserByEmail(email string) (*entities.User, error) {
-	if m.getUserByEmailFunc != nil {
-		return m.getUserByEmailFunc(email)
-	}
-	return &entities.User{ID: 1, Email: email}, nil
-}
-
 func TestCreateFriendships(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
 	tests := []struct {
-		name                        string
-		user1Email                  string
-		user2Email                  string
-		mockFunc                    func(user1, user2 *entities.User) error
-		checkBidirectionalBlockFunc func(user1ID, user2ID int) (bool, error)
-		wantErr                     bool
-		wantErrType                 errors.ErrorType
-		wantErrMsg                  string
+		name        string
+		user1Email  string
+		user2Email  string
+		setupMock   func(mockRepo *mocks.MockUserRepositoryInterface)
+		wantErr     bool
+		wantErrType errors.ErrorType
+		wantErrMsg  string
 	}{
 		{
 			name:       "successful friendship creation",
 			user1Email: "a@example.com",
 			user2Email: "b@example.com",
-			mockFunc:   nil,
-			wantErr:    false,
+			setupMock: func(mockRepo *mocks.MockUserRepositoryInterface) {
+				user1 := &entities.User{ID: 1, Email: "a@example.com"}
+				user2 := &entities.User{ID: 2, Email: "b@example.com"}
+				mockRepo.EXPECT().GetUserByEmail("a@example.com").Return(user1, nil)
+				mockRepo.EXPECT().GetUserByEmail("b@example.com").Return(user2, nil)
+				mockRepo.EXPECT().CheckBidirectionalBlock(1, 2).Return(false, nil)
+				mockRepo.EXPECT().CreateFriendship(user1, user2).Return(nil)
+			},
+			wantErr: false,
 		},
 		{
 			name:       "same email friendship should fail",
 			user1Email: "a@example.com",
 			user2Email: "a@example.com",
-			mockFunc:   nil,
-			wantErr:    true,
+			setupMock: func(mockRepo *mocks.MockUserRepositoryInterface) {
+				// No mock expectations needed as validation happens before repository calls
+			},
+			wantErr:     true,
 			wantErrType: errors.ErrorTypeBusiness,
-			wantErrMsg: "Cannot add yourself as a friend",
+			wantErrMsg:  "Cannot add yourself as a friend",
 		},
 		{
 			name:       "repo error",
 			user1Email: "a@example.com",
 			user2Email: "b@example.com",
-			mockFunc: func(user1, user2 *entities.User) error {
-				return errors.New(errors.ErrorTypeDatabase, "database connection failed")
+			setupMock: func(mockRepo *mocks.MockUserRepositoryInterface) {
+				user1 := &entities.User{ID: 1, Email: "a@example.com"}
+				user2 := &entities.User{ID: 2, Email: "b@example.com"}
+
+				mockRepo.EXPECT().GetUserByEmail("a@example.com").Return(user1, nil)
+				mockRepo.EXPECT().GetUserByEmail("b@example.com").Return(user2, nil)
+				mockRepo.EXPECT().CheckBidirectionalBlock(1, 2).Return(false, nil)
+				mockRepo.EXPECT().CreateFriendship(user1, user2).Return(errors.New(errors.ErrorTypeDatabase, "database connection failed"))
 			},
 			wantErr:     true,
 			wantErrType: errors.ErrorTypeDatabase,
@@ -126,21 +69,13 @@ func TestCreateFriendships(t *testing.T) {
 			name:       "friendship blocked - user1 blocks user2",
 			user1Email: "a@example.com",
 			user2Email: "b@example.com",
-			mockFunc:   nil,
-			checkBidirectionalBlockFunc: func(user1ID, user2ID int) (bool, error) {
-				return true, nil
-			},
-			wantErr:     true,
-			wantErrType: errors.ErrorTypeForbidden,
-			wantErrMsg:  "Cannot perform action on blocked user",
-		},
-		{
-			name:       "friendship blocked - user2 blocks user1",
-			user1Email: "a@example.com",
-			user2Email: "b@example.com",
-			mockFunc:   nil,
-			checkBidirectionalBlockFunc: func(user1ID, user2ID int) (bool, error) {
-				return true, nil
+			setupMock: func(mockRepo *mocks.MockUserRepositoryInterface) {
+				user1 := &entities.User{ID: 1, Email: "a@example.com"}
+				user2 := &entities.User{ID: 2, Email: "b@example.com"}
+
+				mockRepo.EXPECT().GetUserByEmail("a@example.com").Return(user1, nil)
+				mockRepo.EXPECT().GetUserByEmail("b@example.com").Return(user2, nil)
+				mockRepo.EXPECT().CheckBidirectionalBlock(1, 2).Return(true, nil)
 			},
 			wantErr:     true,
 			wantErrType: errors.ErrorTypeForbidden,
@@ -150,9 +85,13 @@ func TestCreateFriendships(t *testing.T) {
 			name:       "block check error",
 			user1Email: "a@example.com",
 			user2Email: "b@example.com",
-			mockFunc:   nil,
-			checkBidirectionalBlockFunc: func(user1ID, user2ID int) (bool, error) {
-				return false, errors.New(errors.ErrorTypeDatabase, "Failed to check block existence")
+			setupMock: func(mockRepo *mocks.MockUserRepositoryInterface) {
+				user1 := &entities.User{ID: 1, Email: "a@example.com"}
+				user2 := &entities.User{ID: 2, Email: "b@example.com"}
+
+				mockRepo.EXPECT().GetUserByEmail("a@example.com").Return(user1, nil)
+				mockRepo.EXPECT().GetUserByEmail("b@example.com").Return(user2, nil)
+				mockRepo.EXPECT().CheckBidirectionalBlock(1, 2).Return(false, errors.New(errors.ErrorTypeDatabase, "Failed to check block existence"))
 			},
 			wantErr:     true,
 			wantErrType: errors.ErrorTypeDatabase,
@@ -162,12 +101,10 @@ func TestCreateFriendships(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockRepo := &mockUserRepo{
-				createFriendshipFunc:        tt.mockFunc,
-				checkBidirectionalBlockFunc: tt.checkBidirectionalBlockFunc,
-			}
-			controller := NewUserController(mockRepo)
+			mockRepo := mocks.NewMockUserRepositoryInterface(ctrl)
+			tt.setupMock(mockRepo)
 
+			controller := NewUserController(mockRepo)
 			err := controller.CreateFriendship(tt.user1Email, tt.user2Email)
 
 			if !tt.wantErr {
@@ -200,27 +137,29 @@ func TestCreateFriendships(t *testing.T) {
 }
 
 func TestGetFriendList(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
 	tests := []struct {
-		name              string
-		email             string
-		getUserByEmailFunc func(email string) (*entities.User, error)
-		getFriendListFunc  func(user *entities.User) ([]*entities.User, error)
-		wantErr           bool
-		wantErrType       errors.ErrorType
-		wantErrMsg        string
-		expectedFriends   []*entities.User
+		name            string
+		email           string
+		setupMock       func(mockRepo *mocks.MockUserRepositoryInterface)
+		wantErr         bool
+		wantErrType     errors.ErrorType
+		wantErrMsg      string
+		expectedFriends []*entities.User
 	}{
 		{
 			name:  "successful friend list retrieval with friends",
 			email: "andy@example.com",
-			getUserByEmailFunc: func(email string) (*entities.User, error) {
-				return &entities.User{ID: 1, Email: "andy@example.com"}, nil
-			},
-			getFriendListFunc: func(user *entities.User) ([]*entities.User, error) {
-				return []*entities.User{
+			setupMock: func(mockRepo *mocks.MockUserRepositoryInterface) {
+				user := &entities.User{ID: 1, Email: "andy@example.com"}
+				friends := []*entities.User{
 					{ID: 2, Email: "john@example.com"},
 					{ID: 3, Email: "jane@example.com"},
-				}, nil
+				}
+				mockRepo.EXPECT().GetUserByEmail("andy@example.com").Return(user, nil)
+				mockRepo.EXPECT().GetFriendList(user).Return(friends, nil)
 			},
 			wantErr: false,
 			expectedFriends: []*entities.User{
@@ -231,11 +170,10 @@ func TestGetFriendList(t *testing.T) {
 		{
 			name:  "successful friend list retrieval with no friends",
 			email: "andy@example.com",
-			getUserByEmailFunc: func(email string) (*entities.User, error) {
-				return &entities.User{ID: 1, Email: "andy@example.com"}, nil
-			},
-			getFriendListFunc: func(user *entities.User) ([]*entities.User, error) {
-				return []*entities.User{}, nil
+			setupMock: func(mockRepo *mocks.MockUserRepositoryInterface) {
+				user := &entities.User{ID: 1, Email: "andy@example.com"}
+				mockRepo.EXPECT().GetUserByEmail("andy@example.com").Return(user, nil)
+				mockRepo.EXPECT().GetFriendList(user).Return([]*entities.User{}, nil)
 			},
 			wantErr:         false,
 			expectedFriends: []*entities.User{},
@@ -243,22 +181,20 @@ func TestGetFriendList(t *testing.T) {
 		{
 			name:  "user not found",
 			email: "nonexistent@example.com",
-			getUserByEmailFunc: func(email string) (*entities.User, error) {
-				return nil, errors.Newf(errors.ErrorTypeNotFound, "User with email '%s' not found", email)
+			setupMock: func(mockRepo *mocks.MockUserRepositoryInterface) {
+				mockRepo.EXPECT().GetUserByEmail("nonexistent@example.com").Return(nil, errors.Newf(errors.ErrorTypeNotFound, "User with email '%s' not found", "nonexistent@example.com"))
 			},
-			getFriendListFunc: nil,
-			wantErr:          true,
-			wantErrType:      errors.ErrorTypeNotFound,
-			wantErrMsg:       "User with email 'nonexistent@example.com' not found",
+			wantErr:     true,
+			wantErrType: errors.ErrorTypeNotFound,
+			wantErrMsg:  "User with email 'nonexistent@example.com' not found",
 		},
 		{
 			name:  "repository error when getting friends",
 			email: "andy@example.com",
-			getUserByEmailFunc: func(email string) (*entities.User, error) {
-				return &entities.User{ID: 1, Email: "andy@example.com"}, nil
-			},
-			getFriendListFunc: func(user *entities.User) ([]*entities.User, error) {
-				return nil, errors.New(errors.ErrorTypeDatabase, "database connection failed")
+			setupMock: func(mockRepo *mocks.MockUserRepositoryInterface) {
+				user := &entities.User{ID: 1, Email: "andy@example.com"}
+				mockRepo.EXPECT().GetUserByEmail("andy@example.com").Return(user, nil)
+				mockRepo.EXPECT().GetFriendList(user).Return(nil, errors.New(errors.ErrorTypeDatabase, "database connection failed"))
 			},
 			wantErr:     true,
 			wantErrType: errors.ErrorTypeDatabase,
@@ -268,12 +204,10 @@ func TestGetFriendList(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockRepo := &mockUserRepo{
-				getUserByEmailFunc: tt.getUserByEmailFunc,
-				getFriendListFunc:  tt.getFriendListFunc,
-			}
-			controller := NewUserController(mockRepo)
+			mockRepo := mocks.NewMockUserRepositoryInterface(ctrl)
+			tt.setupMock(mockRepo)
 
+			controller := NewUserController(mockRepo)
 			friends, err := controller.GetFriendList(tt.email)
 
 			if !tt.wantErr {
@@ -318,12 +252,14 @@ func TestGetFriendList(t *testing.T) {
 }
 
 func TestGetCommonFriends(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
 	tests := []struct {
 		name                  string
 		email1                string
 		email2                string
-		getUserByEmailFunc    func(email string) (*entities.User, error)
-		getCommonFriendsFunc  func(user1, user2 *entities.User) ([]*entities.User, error)
+		setupMock             func(mockRepo *mocks.MockUserRepositoryInterface)
 		wantErr               bool
 		wantErrType           errors.ErrorType
 		wantErrMsg            string
@@ -333,20 +269,16 @@ func TestGetCommonFriends(t *testing.T) {
 			name:   "successful common friends retrieval with common friends",
 			email1: "andy@example.com",
 			email2: "john@example.com",
-			getUserByEmailFunc: func(email string) (*entities.User, error) {
-				if email == "andy@example.com" {
-					return &entities.User{ID: 1, Email: "andy@example.com"}, nil
-				}
-				if email == "john@example.com" {
-					return &entities.User{ID: 2, Email: "john@example.com"}, nil
-				}
-				return nil, errors.Newf(errors.ErrorTypeNotFound, "User with email '%s' not found", email)
-			},
-			getCommonFriendsFunc: func(user1, user2 *entities.User) ([]*entities.User, error) {
-				return []*entities.User{
+			setupMock: func(mockRepo *mocks.MockUserRepositoryInterface) {
+				user1 := &entities.User{ID: 1, Email: "andy@example.com"}
+				user2 := &entities.User{ID: 2, Email: "john@example.com"}
+				commonFriends := []*entities.User{
 					{ID: 3, Email: "jane@example.com"},
 					{ID: 4, Email: "bob@example.com"},
-				}, nil
+				}
+				mockRepo.EXPECT().GetUserByEmail("andy@example.com").Return(user1, nil)
+				mockRepo.EXPECT().GetUserByEmail("john@example.com").Return(user2, nil)
+				mockRepo.EXPECT().GetCommonFriends(user1, user2).Return(commonFriends, nil)
 			},
 			wantErr: false,
 			expectedCommonFriends: []*entities.User{
@@ -358,79 +290,61 @@ func TestGetCommonFriends(t *testing.T) {
 			name:   "successful common friends retrieval with no common friends",
 			email1: "andy@example.com",
 			email2: "john@example.com",
-			getUserByEmailFunc: func(email string) (*entities.User, error) {
-				if email == "andy@example.com" {
-					return &entities.User{ID: 1, Email: "andy@example.com"}, nil
-				}
-				if email == "john@example.com" {
-					return &entities.User{ID: 2, Email: "john@example.com"}, nil
-				}
-				return nil, errors.Newf(errors.ErrorTypeNotFound, "User with email '%s' not found", email)
-			},
-			getCommonFriendsFunc: func(user1, user2 *entities.User) ([]*entities.User, error) {
-				return []*entities.User{}, nil
+			setupMock: func(mockRepo *mocks.MockUserRepositoryInterface) {
+				user1 := &entities.User{ID: 1, Email: "andy@example.com"}
+				user2 := &entities.User{ID: 2, Email: "john@example.com"}
+				mockRepo.EXPECT().GetUserByEmail("andy@example.com").Return(user1, nil)
+				mockRepo.EXPECT().GetUserByEmail("john@example.com").Return(user2, nil)
+				mockRepo.EXPECT().GetCommonFriends(user1, user2).Return([]*entities.User{}, nil)
 			},
 			wantErr:               false,
 			expectedCommonFriends: []*entities.User{},
 		},
 		{
-			name:                 "cannot get common friends with self",
-			email1:               "andy@example.com",
-			email2:               "andy@example.com",
-			getUserByEmailFunc:   nil,
-			getCommonFriendsFunc: nil,
-			wantErr:              true,
-			wantErrType:          errors.ErrorTypeBusiness,
-			wantErrMsg:           "Cannot get common friends with yourself",
+			name:   "cannot get common friends with self",
+			email1: "andy@example.com",
+			email2: "andy@example.com",
+			setupMock: func(mockRepo *mocks.MockUserRepositoryInterface) {
+				// No mock expectations needed as validation happens before repository calls
+			},
+			wantErr:     true,
+			wantErrType: errors.ErrorTypeBusiness,
+			wantErrMsg:  "Cannot get common friends with yourself",
 		},
 		{
 			name:   "first user not found",
 			email1: "nonexistent@example.com",
 			email2: "john@example.com",
-			getUserByEmailFunc: func(email string) (*entities.User, error) {
-				if email == "nonexistent@example.com" {
-					return nil, errors.Newf(errors.ErrorTypeNotFound, "User with email '%s' not found", email)
-				}
-				return &entities.User{ID: 2, Email: "john@example.com"}, nil
+			setupMock: func(mockRepo *mocks.MockUserRepositoryInterface) {
+				mockRepo.EXPECT().GetUserByEmail("nonexistent@example.com").Return(nil, errors.Newf(errors.ErrorTypeNotFound, "User with email '%s' not found", "nonexistent@example.com"))
 			},
-			getCommonFriendsFunc: nil,
-			wantErr:              true,
-			wantErrType:          errors.ErrorTypeNotFound,
-			wantErrMsg:           "User with email 'nonexistent@example.com' not found",
+			wantErr:     true,
+			wantErrType: errors.ErrorTypeNotFound,
+			wantErrMsg:  "User with email 'nonexistent@example.com' not found",
 		},
 		{
 			name:   "second user not found",
 			email1: "andy@example.com",
 			email2: "nonexistent@example.com",
-			getUserByEmailFunc: func(email string) (*entities.User, error) {
-				if email == "andy@example.com" {
-					return &entities.User{ID: 1, Email: "andy@example.com"}, nil
-				}
-				if email == "nonexistent@example.com" {
-					return nil, errors.Newf(errors.ErrorTypeNotFound, "User with email '%s' not found", email)
-				}
-				return nil, errors.Newf(errors.ErrorTypeNotFound, "User with email '%s' not found", email)
+			setupMock: func(mockRepo *mocks.MockUserRepositoryInterface) {
+				user1 := &entities.User{ID: 1, Email: "andy@example.com"}
+				mockRepo.EXPECT().GetUserByEmail("andy@example.com").Return(user1, nil)
+				mockRepo.EXPECT().GetUserByEmail("nonexistent@example.com").Return(nil, errors.Newf(errors.ErrorTypeNotFound, "User with email '%s' not found", "nonexistent@example.com"))
 			},
-			getCommonFriendsFunc: nil,
-			wantErr:              true,
-			wantErrType:          errors.ErrorTypeNotFound,
-			wantErrMsg:           "User with email 'nonexistent@example.com' not found",
+			wantErr:     true,
+			wantErrType: errors.ErrorTypeNotFound,
+			wantErrMsg:  "User with email 'nonexistent@example.com' not found",
 		},
 		{
 			name:   "repository error when getting common friends",
 			email1: "andy@example.com",
 			email2: "john@example.com",
-			getUserByEmailFunc: func(email string) (*entities.User, error) {
-				if email == "andy@example.com" {
-					return &entities.User{ID: 1, Email: "andy@example.com"}, nil
-				}
-				if email == "john@example.com" {
-					return &entities.User{ID: 2, Email: "john@example.com"}, nil
-				}
-				return nil, errors.Newf(errors.ErrorTypeNotFound, "User with email '%s' not found", email)
-			},
-			getCommonFriendsFunc: func(user1, user2 *entities.User) ([]*entities.User, error) {
-				return nil, errors.New(errors.ErrorTypeDatabase, "database connection failed")
+			setupMock: func(mockRepo *mocks.MockUserRepositoryInterface) {
+				user1 := &entities.User{ID: 1, Email: "andy@example.com"}
+				user2 := &entities.User{ID: 2, Email: "john@example.com"}
+				mockRepo.EXPECT().GetUserByEmail("andy@example.com").Return(user1, nil)
+				mockRepo.EXPECT().GetUserByEmail("john@example.com").Return(user2, nil)
+				mockRepo.EXPECT().GetCommonFriends(user1, user2).Return(nil, errors.New(errors.ErrorTypeDatabase, "database connection failed"))
 			},
 			wantErr:     true,
 			wantErrType: errors.ErrorTypeDatabase,
@@ -440,12 +354,10 @@ func TestGetCommonFriends(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockRepo := &mockUserRepo{
-				getUserByEmailFunc:   tt.getUserByEmailFunc,
-				getCommonFriendsFunc: tt.getCommonFriendsFunc,
-			}
-			controller := NewUserController(mockRepo)
+			mockRepo := mocks.NewMockUserRepositoryInterface(ctrl)
+			tt.setupMock(mockRepo)
 
+			controller := NewUserController(mockRepo)
 			commonFriends, err := controller.GetCommonFriends(tt.email1, tt.email2)
 
 			if !tt.wantErr {
@@ -489,86 +401,68 @@ func TestGetCommonFriends(t *testing.T) {
 	}
 }
 
-
 func TestCreateSubscription(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
 	tests := []struct {
-		name                        string
-		requestorEmail              string
-		targetEmail                 string
-		getUserByEmailFunc          func(email string) (*entities.User, error)
-		createSubscriptionFunc      func(requestor, target *entities.User) error
-		checkBidirectionalBlockFunc func(user1ID, user2ID int) (bool, error)
-		wantErr                     bool
-		wantErrType                 errors.ErrorType
-		wantErrMsg                  string
+		name           string
+		requestorEmail string
+		targetEmail    string
+		setupMock      func(mockRepo *mocks.MockUserRepositoryInterface)
+		wantErr        bool
+		wantErrType    errors.ErrorType
+		wantErrMsg     string
 	}{
 		{
 			name:           "successful subscription creation",
 			requestorEmail: "requestor@example.com",
 			targetEmail:    "target@example.com",
-			getUserByEmailFunc: func(email string) (*entities.User, error) {
-				if email == "requestor@example.com" {
-					return &entities.User{ID: 1, Email: "requestor@example.com"}, nil
-				}
-				if email == "target@example.com" {
-					return &entities.User{ID: 2, Email: "target@example.com"}, nil
-				}
-				return nil, errors.Newf(errors.ErrorTypeNotFound, "User with email '%s' not found", email)
+			setupMock: func(mockRepo *mocks.MockUserRepositoryInterface) {
+				requestor := &entities.User{ID: 1, Email: "requestor@example.com"}
+				target := &entities.User{ID: 2, Email: "target@example.com"}
+				mockRepo.EXPECT().GetUserByEmail("requestor@example.com").Return(requestor, nil)
+				mockRepo.EXPECT().GetUserByEmail("target@example.com").Return(target, nil)
+				mockRepo.EXPECT().CheckBidirectionalBlock(1, 2).Return(false, nil)
+				mockRepo.EXPECT().CreateSubscription(requestor, target).Return(nil)
 			},
-			createSubscriptionFunc: nil,
-			wantErr:                false,
+			wantErr: false,
 		},
 		{
 			name:           "requestor user not found",
 			requestorEmail: "nonexistent@example.com",
 			targetEmail:    "target@example.com",
-			getUserByEmailFunc: func(email string) (*entities.User, error) {
-				if email == "nonexistent@example.com" {
-					return nil, errors.Newf(errors.ErrorTypeNotFound, "User with email '%s' not found", email)
-				}
-				if email == "target@example.com" {
-					return &entities.User{ID: 2, Email: "target@example.com"}, nil
-				}
-				return nil, errors.Newf(errors.ErrorTypeNotFound, "User with email '%s' not found", email)
+			setupMock: func(mockRepo *mocks.MockUserRepositoryInterface) {
+				mockRepo.EXPECT().GetUserByEmail("nonexistent@example.com").Return(nil, errors.Newf(errors.ErrorTypeNotFound, "User with email '%s' not found", "nonexistent@example.com"))
 			},
-			createSubscriptionFunc: nil,
-			wantErr:                true,
-			wantErrType:            errors.ErrorTypeNotFound,
-			wantErrMsg:             "User with email 'nonexistent@example.com' not found",
+			wantErr:     true,
+			wantErrType: errors.ErrorTypeNotFound,
+			wantErrMsg:  "User with email 'nonexistent@example.com' not found",
 		},
 		{
 			name:           "target user not found",
 			requestorEmail: "requestor@example.com",
 			targetEmail:    "nonexistent@example.com",
-			getUserByEmailFunc: func(email string) (*entities.User, error) {
-				if email == "requestor@example.com" {
-					return &entities.User{ID: 1, Email: "requestor@example.com"}, nil
-				}
-				if email == "nonexistent@example.com" {
-					return nil, errors.Newf(errors.ErrorTypeNotFound, "User with email '%s' not found", email)
-				}
-				return nil, errors.Newf(errors.ErrorTypeNotFound, "User with email '%s' not found", email)
+			setupMock: func(mockRepo *mocks.MockUserRepositoryInterface) {
+				requestor := &entities.User{ID: 1, Email: "requestor@example.com"}
+				mockRepo.EXPECT().GetUserByEmail("requestor@example.com").Return(requestor, nil)
+				mockRepo.EXPECT().GetUserByEmail("nonexistent@example.com").Return(nil, errors.Newf(errors.ErrorTypeNotFound, "User with email '%s' not found", "nonexistent@example.com"))
 			},
-			createSubscriptionFunc: nil,
-			wantErr:                true,
-			wantErrType:            errors.ErrorTypeNotFound,
-			wantErrMsg:             "User with email 'nonexistent@example.com' not found",
+			wantErr:     true,
+			wantErrType: errors.ErrorTypeNotFound,
+			wantErrMsg:  "User with email 'nonexistent@example.com' not found",
 		},
 		{
 			name:           "repository error when creating subscription",
 			requestorEmail: "requestor@example.com",
 			targetEmail:    "target@example.com",
-			getUserByEmailFunc: func(email string) (*entities.User, error) {
-				if email == "requestor@example.com" {
-					return &entities.User{ID: 1, Email: "requestor@example.com"}, nil
-				}
-				if email == "target@example.com" {
-					return &entities.User{ID: 2, Email: "target@example.com"}, nil
-				}
-				return nil, errors.Newf(errors.ErrorTypeNotFound, "User with email '%s' not found", email)
-			},
-			createSubscriptionFunc: func(requestor, target *entities.User) error {
-				return errors.New(errors.ErrorTypeDatabase, "database connection failed")
+			setupMock: func(mockRepo *mocks.MockUserRepositoryInterface) {
+				requestor := &entities.User{ID: 1, Email: "requestor@example.com"}
+				target := &entities.User{ID: 2, Email: "target@example.com"}
+				mockRepo.EXPECT().GetUserByEmail("requestor@example.com").Return(requestor, nil)
+				mockRepo.EXPECT().GetUserByEmail("target@example.com").Return(target, nil)
+				mockRepo.EXPECT().CheckBidirectionalBlock(1, 2).Return(false, nil)
+				mockRepo.EXPECT().CreateSubscription(requestor, target).Return(errors.New(errors.ErrorTypeDatabase, "database connection failed"))
 			},
 			wantErr:     true,
 			wantErrType: errors.ErrorTypeDatabase,
@@ -578,17 +472,13 @@ func TestCreateSubscription(t *testing.T) {
 			name:           "duplicate subscription",
 			requestorEmail: "requestor@example.com",
 			targetEmail:    "target@example.com",
-			getUserByEmailFunc: func(email string) (*entities.User, error) {
-				if email == "requestor@example.com" {
-					return &entities.User{ID: 1, Email: "requestor@example.com"}, nil
-				}
-				if email == "target@example.com" {
-					return &entities.User{ID: 2, Email: "target@example.com"}, nil
-				}
-				return nil, errors.Newf(errors.ErrorTypeNotFound, "User with email '%s' not found", email)
-			},
-			createSubscriptionFunc: func(requestor, target *entities.User) error {
-				return errors.New(errors.ErrorTypeBusiness, "Subscription already exists")
+			setupMock: func(mockRepo *mocks.MockUserRepositoryInterface) {
+				requestor := &entities.User{ID: 1, Email: "requestor@example.com"}
+				target := &entities.User{ID: 2, Email: "target@example.com"}
+				mockRepo.EXPECT().GetUserByEmail("requestor@example.com").Return(requestor, nil)
+				mockRepo.EXPECT().GetUserByEmail("target@example.com").Return(target, nil)
+				mockRepo.EXPECT().CheckBidirectionalBlock(1, 2).Return(false, nil)
+				mockRepo.EXPECT().CreateSubscription(requestor, target).Return(errors.New(errors.ErrorTypeBusiness, "Subscription already exists"))
 			},
 			wantErr:     true,
 			wantErrType: errors.ErrorTypeBusiness,
@@ -598,18 +488,12 @@ func TestCreateSubscription(t *testing.T) {
 			name:           "subscription blocked - requestor blocks target",
 			requestorEmail: "requestor@example.com",
 			targetEmail:    "target@example.com",
-			getUserByEmailFunc: func(email string) (*entities.User, error) {
-				if email == "requestor@example.com" {
-					return &entities.User{ID: 1, Email: "requestor@example.com"}, nil
-				}
-				if email == "target@example.com" {
-					return &entities.User{ID: 2, Email: "target@example.com"}, nil
-				}
-				return nil, errors.Newf(errors.ErrorTypeNotFound, "User with email '%s' not found", email)
-			},
-			createSubscriptionFunc: nil,
-			checkBidirectionalBlockFunc: func(user1ID, user2ID int) (bool, error) {
-				return true, nil
+			setupMock: func(mockRepo *mocks.MockUserRepositoryInterface) {
+				requestor := &entities.User{ID: 1, Email: "requestor@example.com"}
+				target := &entities.User{ID: 2, Email: "target@example.com"}
+				mockRepo.EXPECT().GetUserByEmail("requestor@example.com").Return(requestor, nil)
+				mockRepo.EXPECT().GetUserByEmail("target@example.com").Return(target, nil)
+				mockRepo.EXPECT().CheckBidirectionalBlock(1, 2).Return(true, nil)
 			},
 			wantErr:     true,
 			wantErrType: errors.ErrorTypeForbidden,
@@ -619,18 +503,12 @@ func TestCreateSubscription(t *testing.T) {
 			name:           "subscription blocked - target blocks requestor",
 			requestorEmail: "requestor@example.com",
 			targetEmail:    "target@example.com",
-			getUserByEmailFunc: func(email string) (*entities.User, error) {
-				if email == "requestor@example.com" {
-					return &entities.User{ID: 1, Email: "requestor@example.com"}, nil
-				}
-				if email == "target@example.com" {
-					return &entities.User{ID: 2, Email: "target@example.com"}, nil
-				}
-				return nil, errors.Newf(errors.ErrorTypeNotFound, "User with email '%s' not found", email)
-			},
-			createSubscriptionFunc: nil,
-			checkBidirectionalBlockFunc: func(user1ID, user2ID int) (bool, error) {
-				return true, nil
+			setupMock: func(mockRepo *mocks.MockUserRepositoryInterface) {
+				requestor := &entities.User{ID: 1, Email: "requestor@example.com"}
+				target := &entities.User{ID: 2, Email: "target@example.com"}
+				mockRepo.EXPECT().GetUserByEmail("requestor@example.com").Return(requestor, nil)
+				mockRepo.EXPECT().GetUserByEmail("target@example.com").Return(target, nil)
+				mockRepo.EXPECT().CheckBidirectionalBlock(1, 2).Return(true, nil)
 			},
 			wantErr:     true,
 			wantErrType: errors.ErrorTypeForbidden,
@@ -640,18 +518,12 @@ func TestCreateSubscription(t *testing.T) {
 			name:           "block check error during subscription",
 			requestorEmail: "requestor@example.com",
 			targetEmail:    "target@example.com",
-			getUserByEmailFunc: func(email string) (*entities.User, error) {
-				if email == "requestor@example.com" {
-					return &entities.User{ID: 1, Email: "requestor@example.com"}, nil
-				}
-				if email == "target@example.com" {
-					return &entities.User{ID: 2, Email: "target@example.com"}, nil
-				}
-				return nil, errors.Newf(errors.ErrorTypeNotFound, "User with email '%s' not found", email)
-			},
-			createSubscriptionFunc: nil,
-			checkBidirectionalBlockFunc: func(user1ID, user2ID int) (bool, error) {
-				return false, errors.New(errors.ErrorTypeDatabase, "Failed to check block existence")
+			setupMock: func(mockRepo *mocks.MockUserRepositoryInterface) {
+				requestor := &entities.User{ID: 1, Email: "requestor@example.com"}
+				target := &entities.User{ID: 2, Email: "target@example.com"}
+				mockRepo.EXPECT().GetUserByEmail("requestor@example.com").Return(requestor, nil)
+				mockRepo.EXPECT().GetUserByEmail("target@example.com").Return(target, nil)
+				mockRepo.EXPECT().CheckBidirectionalBlock(1, 2).Return(false, errors.New(errors.ErrorTypeDatabase, "Failed to check block existence"))
 			},
 			wantErr:     true,
 			wantErrType: errors.ErrorTypeDatabase,
@@ -661,13 +533,10 @@ func TestCreateSubscription(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockRepo := &mockUserRepo{
-				getUserByEmailFunc:          tt.getUserByEmailFunc,
-				createSubscriptionFunc:      tt.createSubscriptionFunc,
-				checkBidirectionalBlockFunc: tt.checkBidirectionalBlockFunc,
-			}
-			controller := NewUserController(mockRepo)
+			mockRepo := mocks.NewMockUserRepositoryInterface(ctrl)
+			tt.setupMock(mockRepo)
 
+			controller := NewUserController(mockRepo)
 			err := controller.CreateSubscription(tt.requestorEmail, tt.targetEmail)
 
 			if !tt.wantErr {
@@ -699,83 +568,65 @@ func TestCreateSubscription(t *testing.T) {
 	}
 }
 func TestCreateBlock(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
 	tests := []struct {
-		name               string
-		requestorEmail     string
-		targetEmail        string
-		getUserByEmailFunc func(email string) (*entities.User, error)
-		createBlockTxFunc  func(requestor, target *entities.User) error
-		wantErr            bool
-		wantErrType        errors.ErrorType
-		wantErrMsg         string
+		name           string
+		requestorEmail string
+		targetEmail    string
+		setupMock      func(mockRepo *mocks.MockUserRepositoryInterface)
+		wantErr        bool
+		wantErrType    errors.ErrorType
+		wantErrMsg     string
 	}{
 		{
 			name:           "successful block creation",
 			requestorEmail: "requestor@example.com",
 			targetEmail:    "target@example.com",
-			getUserByEmailFunc: func(email string) (*entities.User, error) {
-				if email == "requestor@example.com" {
-					return &entities.User{ID: 1, Email: "requestor@example.com"}, nil
-				}
-				if email == "target@example.com" {
-					return &entities.User{ID: 2, Email: "target@example.com"}, nil
-				}
-				return nil, errors.Newf(errors.ErrorTypeNotFound, "User with email '%s' not found", email)
+			setupMock: func(mockRepo *mocks.MockUserRepositoryInterface) {
+				requestor := &entities.User{ID: 1, Email: "requestor@example.com"}
+				target := &entities.User{ID: 2, Email: "target@example.com"}
+				mockRepo.EXPECT().GetUserByEmail("requestor@example.com").Return(requestor, nil)
+				mockRepo.EXPECT().GetUserByEmail("target@example.com").Return(target, nil)
+				mockRepo.EXPECT().CreateBlockTx(requestor, target).Return(nil)
 			},
-			createBlockTxFunc: nil,
-			wantErr:           false,
+			wantErr: false,
 		},
 		{
 			name:           "requestor user not found",
 			requestorEmail: "nonexistent@example.com",
 			targetEmail:    "target@example.com",
-			getUserByEmailFunc: func(email string) (*entities.User, error) {
-				if email == "nonexistent@example.com" {
-					return nil, errors.Newf(errors.ErrorTypeNotFound, "User with email '%s' not found", email)
-				}
-				if email == "target@example.com" {
-					return &entities.User{ID: 2, Email: "target@example.com"}, nil
-				}
-				return nil, errors.Newf(errors.ErrorTypeNotFound, "User with email '%s' not found", email)
+			setupMock: func(mockRepo *mocks.MockUserRepositoryInterface) {
+				mockRepo.EXPECT().GetUserByEmail("nonexistent@example.com").Return(nil, errors.Newf(errors.ErrorTypeNotFound, "User with email '%s' not found", "nonexistent@example.com"))
 			},
-			createBlockTxFunc: nil,
-			wantErr:           true,
-			wantErrType:       errors.ErrorTypeNotFound,
-			wantErrMsg:        "User with email 'nonexistent@example.com' not found",
+			wantErr:     true,
+			wantErrType: errors.ErrorTypeNotFound,
+			wantErrMsg:  "User with email 'nonexistent@example.com' not found",
 		},
 		{
 			name:           "target user not found",
 			requestorEmail: "requestor@example.com",
 			targetEmail:    "nonexistent@example.com",
-			getUserByEmailFunc: func(email string) (*entities.User, error) {
-				if email == "requestor@example.com" {
-					return &entities.User{ID: 1, Email: "requestor@example.com"}, nil
-				}
-				if email == "nonexistent@example.com" {
-					return nil, errors.Newf(errors.ErrorTypeNotFound, "User with email '%s' not found", email)
-				}
-				return nil, errors.Newf(errors.ErrorTypeNotFound, "User with email '%s' not found", email)
+			setupMock: func(mockRepo *mocks.MockUserRepositoryInterface) {
+				requestor := &entities.User{ID: 1, Email: "requestor@example.com"}
+				mockRepo.EXPECT().GetUserByEmail("requestor@example.com").Return(requestor, nil)
+				mockRepo.EXPECT().GetUserByEmail("nonexistent@example.com").Return(nil, errors.Newf(errors.ErrorTypeNotFound, "User with email '%s' not found", "nonexistent@example.com"))
 			},
-			createBlockTxFunc: nil,
-			wantErr:           true,
-			wantErrType:       errors.ErrorTypeNotFound,
-			wantErrMsg:        "User with email 'nonexistent@example.com' not found",
+			wantErr:     true,
+			wantErrType: errors.ErrorTypeNotFound,
+			wantErrMsg:  "User with email 'nonexistent@example.com' not found",
 		},
 		{
 			name:           "transaction failure during block creation",
 			requestorEmail: "requestor@example.com",
 			targetEmail:    "target@example.com",
-			getUserByEmailFunc: func(email string) (*entities.User, error) {
-				if email == "requestor@example.com" {
-					return &entities.User{ID: 1, Email: "requestor@example.com"}, nil
-				}
-				if email == "target@example.com" {
-					return &entities.User{ID: 2, Email: "target@example.com"}, nil
-				}
-				return nil, errors.Newf(errors.ErrorTypeNotFound, "User with email '%s' not found", email)
-			},
-			createBlockTxFunc: func(requestor, target *entities.User) error {
-				return errors.New(errors.ErrorTypeDatabase, "Failed to delete friendship")
+			setupMock: func(mockRepo *mocks.MockUserRepositoryInterface) {
+				requestor := &entities.User{ID: 1, Email: "requestor@example.com"}
+				target := &entities.User{ID: 2, Email: "target@example.com"}
+				mockRepo.EXPECT().GetUserByEmail("requestor@example.com").Return(requestor, nil)
+				mockRepo.EXPECT().GetUserByEmail("target@example.com").Return(target, nil)
+				mockRepo.EXPECT().CreateBlockTx(requestor, target).Return(errors.New(errors.ErrorTypeDatabase, "Failed to delete friendship"))
 			},
 			wantErr:     true,
 			wantErrType: errors.ErrorTypeDatabase,
@@ -785,17 +636,12 @@ func TestCreateBlock(t *testing.T) {
 			name:           "transaction failure during subscription deletion",
 			requestorEmail: "requestor@example.com",
 			targetEmail:    "target@example.com",
-			getUserByEmailFunc: func(email string) (*entities.User, error) {
-				if email == "requestor@example.com" {
-					return &entities.User{ID: 1, Email: "requestor@example.com"}, nil
-				}
-				if email == "target@example.com" {
-					return &entities.User{ID: 2, Email: "target@example.com"}, nil
-				}
-				return nil, errors.Newf(errors.ErrorTypeNotFound, "User with email '%s' not found", email)
-			},
-			createBlockTxFunc: func(requestor, target *entities.User) error {
-				return errors.New(errors.ErrorTypeDatabase, "Failed to delete requestor subscription")
+			setupMock: func(mockRepo *mocks.MockUserRepositoryInterface) {
+				requestor := &entities.User{ID: 1, Email: "requestor@example.com"}
+				target := &entities.User{ID: 2, Email: "target@example.com"}
+				mockRepo.EXPECT().GetUserByEmail("requestor@example.com").Return(requestor, nil)
+				mockRepo.EXPECT().GetUserByEmail("target@example.com").Return(target, nil)
+				mockRepo.EXPECT().CreateBlockTx(requestor, target).Return(errors.New(errors.ErrorTypeDatabase, "Failed to delete requestor subscription"))
 			},
 			wantErr:     true,
 			wantErrType: errors.ErrorTypeDatabase,
@@ -805,17 +651,12 @@ func TestCreateBlock(t *testing.T) {
 			name:           "block creation database error",
 			requestorEmail: "requestor@example.com",
 			targetEmail:    "target@example.com",
-			getUserByEmailFunc: func(email string) (*entities.User, error) {
-				if email == "requestor@example.com" {
-					return &entities.User{ID: 1, Email: "requestor@example.com"}, nil
-				}
-				if email == "target@example.com" {
-					return &entities.User{ID: 2, Email: "target@example.com"}, nil
-				}
-				return nil, errors.Newf(errors.ErrorTypeNotFound, "User with email '%s' not found", email)
-			},
-			createBlockTxFunc: func(requestor, target *entities.User) error {
-				return errors.New(errors.ErrorTypeDatabase, "Block already exists")
+			setupMock: func(mockRepo *mocks.MockUserRepositoryInterface) {
+				requestor := &entities.User{ID: 1, Email: "requestor@example.com"}
+				target := &entities.User{ID: 2, Email: "target@example.com"}
+				mockRepo.EXPECT().GetUserByEmail("requestor@example.com").Return(requestor, nil)
+				mockRepo.EXPECT().GetUserByEmail("target@example.com").Return(target, nil)
+				mockRepo.EXPECT().CreateBlockTx(requestor, target).Return(errors.New(errors.ErrorTypeDatabase, "Block already exists"))
 			},
 			wantErr:     true,
 			wantErrType: errors.ErrorTypeDatabase,
@@ -825,17 +666,12 @@ func TestCreateBlock(t *testing.T) {
 			name:           "transaction commit failure",
 			requestorEmail: "requestor@example.com",
 			targetEmail:    "target@example.com",
-			getUserByEmailFunc: func(email string) (*entities.User, error) {
-				if email == "requestor@example.com" {
-					return &entities.User{ID: 1, Email: "requestor@example.com"}, nil
-				}
-				if email == "target@example.com" {
-					return &entities.User{ID: 2, Email: "target@example.com"}, nil
-				}
-				return nil, errors.Newf(errors.ErrorTypeNotFound, "User with email '%s' not found", email)
-			},
-			createBlockTxFunc: func(requestor, target *entities.User) error {
-				return errors.New(errors.ErrorTypeDatabase, "Failed to commit transaction")
+			setupMock: func(mockRepo *mocks.MockUserRepositoryInterface) {
+				requestor := &entities.User{ID: 1, Email: "requestor@example.com"}
+				target := &entities.User{ID: 2, Email: "target@example.com"}
+				mockRepo.EXPECT().GetUserByEmail("requestor@example.com").Return(requestor, nil)
+				mockRepo.EXPECT().GetUserByEmail("target@example.com").Return(target, nil)
+				mockRepo.EXPECT().CreateBlockTx(requestor, target).Return(errors.New(errors.ErrorTypeDatabase, "Failed to commit transaction"))
 			},
 			wantErr:     true,
 			wantErrType: errors.ErrorTypeDatabase,
@@ -845,12 +681,10 @@ func TestCreateBlock(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockRepo := &mockUserRepo{
-				getUserByEmailFunc: tt.getUserByEmailFunc,
-				createBlockTxFunc:  tt.createBlockTxFunc,
-			}
-			controller := NewUserController(mockRepo)
+			mockRepo := mocks.NewMockUserRepositoryInterface(ctrl)
+			tt.setupMock(mockRepo)
 
+			controller := NewUserController(mockRepo)
 			err := controller.CreateBlock(tt.requestorEmail, tt.targetEmail)
 
 			if !tt.wantErr {

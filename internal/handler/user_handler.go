@@ -4,6 +4,7 @@ import (
 	"assignment/internal/domain/interfaces"
 	"assignment/pkg/errors"
 	"assignment/pkg/validator"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
@@ -36,7 +37,7 @@ func (h *UserHandler) CreateFriendships(c *gin.Context) {
 		return
 	}
 
-	c.JSON(200, gin.H{"success": true})
+	c.JSON(http.StatusOK, gin.H{"success": true})
 }
 
 func (h *UserHandler) GetFriendList(c *gin.Context) {
@@ -69,7 +70,7 @@ func (h *UserHandler) GetFriendList(c *gin.Context) {
 		Count:   len(friendEmails),
 	}
 
-	c.JSON(200, response)
+	c.JSON(http.StatusOK, response)
 }
 
 func (h *UserHandler) GetCommonFriends(c *gin.Context) {
@@ -102,7 +103,7 @@ func (h *UserHandler) GetCommonFriends(c *gin.Context) {
 		Count:   len(friendEmails),
 	}
 
-	c.JSON(200, response)
+	c.JSON(http.StatusOK, response)
 }
 
 func (h *UserHandler) CreateSubscription(c *gin.Context) {
@@ -123,7 +124,7 @@ func (h *UserHandler) CreateSubscription(c *gin.Context) {
 		return
 	}
 
-	c.JSON(200, gin.H{"success": true})
+	c.JSON(http.StatusOK, gin.H{"success": true})
 }
 
 func (h *UserHandler) CreateBlock(c *gin.Context) {
@@ -144,10 +145,37 @@ func (h *UserHandler) CreateBlock(c *gin.Context) {
 		return
 	}
 
-	c.JSON(200, gin.H{"success": true})
+	c.JSON(http.StatusOK, gin.H{"success": true})
 }
 
 func (h *UserHandler) GetRecipients(c *gin.Context) {
-	// TODO: Implement recipients handler
-	c.JSON(501, gin.H{"error": "Not implemented"})
+	var req GetRecipientsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		errors.SendBadRequest(c, "Invalid request format", err.Error())
+		return
+	}
+
+	v := validator.New()
+	if ValidateGetRecipientsRequest(v, &req); !v.Valid() {
+		errors.HandleValidationErrors(c, v.Errors)
+		return
+	}
+
+	recipients, err := h.userController.GetRecipients(req.Sender, req.Text)
+	if err != nil {
+		errors.HandleError(c, err)
+		return
+	}
+
+	recipientEmails := make([]string, len(recipients))
+	for i, recipient := range recipients {
+		recipientEmails[i] = recipient.Email
+	}
+
+	response := RecipientsResponse{
+		Success:    true,
+		Recipients: recipientEmails,
+	}
+
+	c.JSON(http.StatusOK, response)
 }

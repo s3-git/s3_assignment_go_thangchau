@@ -4,6 +4,9 @@ import (
 	"assignment/internal/domain/entities"
 	"assignment/internal/domain/interfaces"
 	"assignment/pkg/errors"
+	"assignment/pkg/utils"
+	"maps"
+	"slices"
 )
 
 type userController struct {
@@ -112,6 +115,59 @@ func (c *userController) CreateBlock(requestorEmail, targetEmail string) error {
 }
 
 func (c *userController) GetRecipients(senderEmail, text string) ([]*entities.User, error) {
-	// TODO: Implement recipients business logic
-	return nil, nil
+	sender, err := c.userRepo.GetUserByEmail(senderEmail)
+	if err != nil {
+		return nil, err
+	}
+
+	mentionedEmails := utils.ExtractEmailsFromText(text)
+	var mentionedUsers []*entities.User
+
+	if len(mentionedEmails) > 0 {
+		mentionedUsers, err = c.userRepo.GetUsersByEmails(mentionedEmails)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	senderFriends, err := c.userRepo.GetFriendList(sender)
+	if err != nil {
+		return nil, err
+	}
+
+	subscribers, err := c.userRepo.GetSubscribersByUserID(sender.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	recipients := make(map[int]*entities.User)
+
+	for _, friend := range senderFriends {
+		recipients[friend.ID] = friend
+	}
+
+	for _, subscriber := range subscribers {
+		recipients[subscriber.ID] = subscriber
+	}
+
+	// Batch check bidirectional blocks for all mentioned users
+	if len(mentionedUsers) > 0 {
+		mentionedUserIDs := make([]int, len(mentionedUsers))
+		for i, user := range mentionedUsers {
+			mentionedUserIDs[i] = user.ID
+		}
+		
+		blockedUsers, err := c.userRepo.CheckBidirectionalBlocksBatch(sender.ID, mentionedUserIDs)
+		if err != nil {
+			return nil, err
+		}
+		
+		for _, mentioned := range mentionedUsers {
+			if !blockedUsers[mentioned.ID] {
+				recipients[mentioned.ID] = mentioned
+			}
+		}
+	}
+
+	return slices.Collect(maps.Values(recipients)), nil
 }

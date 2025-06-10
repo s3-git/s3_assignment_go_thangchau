@@ -55,7 +55,16 @@ make down         # Stop containers
 make down-v       # Stop containers and remove volumes
 
 # Testing
-make test         # Run all tests
+make test                # Run all tests
+make test-coverage       # Run tests with coverage report
+make test-unit          # Run unit tests only
+make test-integration   # Run integration tests only
+
+# Mock generation
+make install-mockgen    # Install mockgen tool
+make generate-mocks     # Generate mocks from interfaces
+make clean-mocks        # Remove generated mocks
+make regen-mocks        # Regenerate all mocks
 
 # Database
 make gensql       # Generate database models with SQLBoiler
@@ -107,7 +116,8 @@ PORT=8080
 │   ├── infrastructure/         # External dependencies
 │   │   └── database/models/    # SQLBoiler generated models
 │   └── repository/             # Data access implementations
-├── migrations/                 # Database schema migrations
+├── mocks/                      # Generated test mocks (GoMock)
+├── db/migrations/              # Database schema migrations
 ├── pkg/                        # Shared utilities and packages
 │   ├── errors/                 # Error handling utilities
 │   ├── response/               # Response formatting
@@ -234,6 +244,143 @@ All endpoints are under `/api/v1/user`
     "success": true
   }
   ```
+
+#### Create Block
+- **POST** `/api/v1/user/blocks`
+- Blocks a user and removes any existing friendship/subscription
+- **Request:**
+  ```json
+  {
+    "requestor": "blocker@example.com",
+    "target": "blocked@example.com"
+  }
+  ```
+- **Response:**
+  ```json
+  {
+    "success": true
+  }
+  ```
+
+#### Get Update Recipients
+- **POST** `/api/v1/user/recipients`
+- Gets all users who should receive updates from a sender
+- **Request:**
+  ```json
+  {
+    "sender": "sender@example.com",
+    "text": "Hello @mention@example.com, this is an update!"
+  }
+  ```
+- **Response:**
+  ```json
+  {
+    "success": true,
+    "recipients": ["friend1@example.com", "subscriber@example.com", "mention@example.com"]
+  }
+  ```
+
+## Testing
+
+This project uses a comprehensive testing strategy with unit tests, integration tests, and mocking.
+
+### Test Structure
+
+```
+├── internal/
+│   ├── controller/
+│   │   ├── user_controller_test.go      # Unit tests for business logic
+│   │   └── user_controller_test_example.go  # GoMock usage examples
+│   ├── handler/
+│   │   └── user_handler_test.go         # Integration tests for HTTP layer
+│   └── repository/
+│       └── user_repository_test.go      # Integration tests for data layer
+└── mocks/
+    └── mock_repository.go               # Generated mocks
+```
+
+### Running Tests
+
+```bash
+# Run all tests
+make test
+
+# Run tests with coverage report
+make test-coverage
+
+# Run only unit tests (internal package)
+make test-unit
+
+# Run integration tests (requires database)
+make test-integration
+
+# View coverage report (after running test-coverage)
+open coverage.html
+```
+
+### Mock Generation
+
+This project uses [GoMock](https://github.com/uber-go/mock) for generating test mocks:
+
+```bash
+# Install mockgen tool
+make install-mockgen
+
+# Generate mocks from interfaces
+make generate-mocks
+
+# Clean and regenerate all mocks
+make regen-mocks
+```
+
+#### Mock Usage Example
+
+```go
+func TestCreateFriendship(t *testing.T) {
+    ctrl := gomock.NewController(t)
+    defer ctrl.Finish()
+
+    mockRepo := mocks.NewMockUserRepositoryInterface(ctrl)
+    
+    // Setup expectations
+    user1 := &entities.User{ID: 1, Email: "user1@example.com"}
+    user2 := &entities.User{ID: 2, Email: "user2@example.com"}
+    
+    mockRepo.EXPECT().GetUserByEmail("user1@example.com").Return(user1, nil)
+    mockRepo.EXPECT().GetUserByEmail("user2@example.com").Return(user2, nil)
+    mockRepo.EXPECT().CheckBidirectionalBlock(1, 2).Return(false, nil)
+    mockRepo.EXPECT().CreateFriendship(user1, user2).Return(nil)
+    
+    controller := NewUserController(mockRepo)
+    err := controller.CreateFriendship("user1@example.com", "user2@example.com")
+    
+    assert.NoError(t, err)
+}
+```
+
+### Test Categories
+
+1. **Unit Tests**: Test business logic in isolation using mocks
+   - Controller layer tests (`*_controller_test.go`)
+   - Pure function tests
+   - Mock all external dependencies
+
+2. **Integration Tests**: Test components working together
+   - Handler tests with real database via testcontainers
+   - Repository tests with real database
+   - End-to-end API tests
+
+3. **Test Data**: Uses testcontainers for isolated database testing
+   - Automatic PostgreSQL container setup
+   - Database migrations run automatically
+   - Clean state for each test
+
+### Dependencies
+
+- **GoMock**: Mock generation from interfaces
+- **Testify**: Assertions and test utilities  
+- **Testcontainers**: Database integration testing
+- **SQLBoiler**: Type-safe database models and queries
 
 ## Troubleshooting
 

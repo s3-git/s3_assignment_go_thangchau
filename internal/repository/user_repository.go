@@ -276,9 +276,51 @@ func (r *userRepository) CheckBidirectionalBlock(user1ID, user2ID int) (bool, er
 	return blocked2, nil
 }
 
-func (r *userRepository) GetRecipients(sender *entities.User, mentionedUsers []*entities.User) ([]*entities.User, error) {
-	// TODO: Implement recipients retrieval
-	return nil, nil
+func (r *userRepository) CheckBidirectionalBlocksBatch(senderID int, userIDs []int) (map[int]bool, error) {
+	if len(userIDs) == 0 {
+		return make(map[int]bool), nil
+	}
+
+	// Build pairs for both directions: (sender -> user) and (user -> sender)
+	var blockerIDs []int
+	var blockedIDs []int
+	
+	for _, userID := range userIDs {
+		// Check sender blocks user
+		blockerIDs = append(blockerIDs, senderID)
+		blockedIDs = append(blockedIDs, userID)
+		// Check user blocks sender
+		blockerIDs = append(blockerIDs, userID)
+		blockedIDs = append(blockedIDs, senderID)
+	}
+
+	// Query for all blocks in one go
+	blocks, err := models.Blocks(
+		qm.Where("(blocker_id, blocked_id) IN (SELECT unnest($1::int[]), unnest($2::int[]))", 
+			blockerIDs, blockedIDs),
+	).All(context.Background(), r.db)
+	if err != nil {
+		return nil, errors.Wrap(err, errors.ErrorTypeDatabase, "Failed to check bidirectional blocks")
+	}
+
+	// Build result map
+	result := make(map[int]bool)
+	for _, userID := range userIDs {
+		result[userID] = false
+	}
+
+	// Mark users as blocked if any block exists
+	for _, block := range blocks {
+		if block.BlockerID == senderID {
+			// Sender blocks this user
+			result[block.BlockedID] = true
+		} else {
+			// This user blocks sender
+			result[block.BlockerID] = true
+		}
+	}
+
+	return result, nil
 }
 
 func (r *userRepository) UserExists(email string) (*entities.User, error) {
@@ -301,4 +343,55 @@ func (r *userRepository) GetUserByEmail(email string) (*entities.User, error) {
 		ID:    user.ID,
 		Email: user.Email,
 	}, nil
+}
+
+func (r *userRepository) GetUsersByEmails(emails []string) ([]*entities.User, error) {
+	if len(emails) == 0 {
+		return []*entities.User{}, nil
+	}
+
+	users, err := models.Users(
+		models.UserWhere.Email.IN(emails),
+	).All(context.Background(), r.db)
+	if err != nil {
+		return nil, errors.Wrap(err, errors.ErrorTypeDatabase, "Failed to fetch users by emails")
+	}
+
+	result := make([]*entities.User, len(users))
+	for i, user := range users {
+		result[i] = &entities.User{
+			ID:    user.ID,
+			Email: user.Email,
+		}
+	}
+
+	return result, nil
+}
+
+func (r *userRepository) GetSubscribersByUserID(userID int) ([]*entities.User, error) {
+	// Get all subscriptions where this user is the target
+	subscriptions, err := models.Subscriptions(
+		models.SubscriptionWhere.TargetID.EQ(userID),
+		qm.Load(models.SubscriptionRels.Subscriber),
+	).All(context.Background(), r.db)
+	if err != nil {
+		return nil, errors.Wrap(err, errors.ErrorTypeDatabase, "Failed to fetch subscribers")
+	}
+
+	// Convert to entities
+	var subscribers []*entities.User
+	for _, subscription := range subscriptions {
+		if subscription.R != nil && subscription.R.Subscriber != nil {
+			subscriber := subscription.R.Subscriber
+			subscribers = append(subscribers, &entities.User{
+				ID:    subscriber.ID,
+				Email: subscriber.Email,
+			})
+		}
+	}
+
+	// Sort subscribers by email using utility function
+	utils.SortUsersByEmail(subscribers)
+
+	return subscribers, nil
 }

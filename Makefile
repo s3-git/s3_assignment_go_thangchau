@@ -1,5 +1,30 @@
+# Testing commands
 test:
 	go test ./... -v
+
+test-coverage:
+	go test ./... -coverprofile=coverage.out
+	go tool cover -html=coverage.out -o coverage.html
+
+test-unit:
+	go test ./internal/... -v
+
+test-integration:
+	go test ./... -tags=integration -v
+
+# Mock generation
+install-mockgen:
+	go install go.uber.org/mock/mockgen@latest
+
+generate-mocks:
+	mockgen -source=internal/domain/interfaces/repository.go -destination=mocks/mock_repository.go -package=mocks
+
+# Clean generated files
+clean-mocks:
+	rm -rf mocks/
+
+# Regenerate all mocks
+regen-mocks: clean-mocks generate-mocks
 
 # Development with hot reload
 dev:

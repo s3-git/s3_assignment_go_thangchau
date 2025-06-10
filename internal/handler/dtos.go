@@ -69,8 +69,8 @@ type GetRecipientsRequest struct {
 
 func ValidateGetRecipientsRequest(v *validator.Validator, r *GetRecipientsRequest) {
 	v.Check(len(r.Sender) > 0, "sender", "sender email cannot be empty")
-	v.Check(len(r.Text) > 0, "text", "text cannot be empty")
 	validator.ValidateEmail(v, r.Sender)
+	v.Check(len(r.Text) > 0, "text", "text cannot be empty")
 }
 
 type FriendListResponse struct {
