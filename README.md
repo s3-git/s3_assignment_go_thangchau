@@ -5,13 +5,11 @@ A REST API for managing user relationships including friendships, subscriptions,
 ## Features
 
 - Create and manage friend connections between users
+- Get commons friends between 2 users
 - Subscribe to updates from other users
 - Block users to prevent friend connections and updates
 - Retrieve friends lists and common friends
 - Get eligible recipients for user updates (mentions, friends, subscribers)
-- Type-safe database operations with SQLBoiler
-- Hot reload development environment with Air
-- Comprehensive test coverage
 
 ## Prerequisites
 
@@ -290,13 +288,13 @@ This project uses a comprehensive testing strategy with unit tests, integration 
 ├── internal/
 │   ├── controller/
 │   │   ├── user_controller_test.go      # Unit tests for business logic
-│   │   └── user_controller_test_example.go  # GoMock usage examples
 │   ├── handler/
 │   │   └── user_handler_test.go         # Integration tests for HTTP layer
 │   └── repository/
 │       └── user_repository_test.go      # Integration tests for data layer
 └── mocks/
     └── mock_repository.go               # Generated mocks
+    └── mock_controller.go               # Generated mocks
 ```
 
 ### Running Tests
@@ -366,8 +364,8 @@ func TestCreateFriendship(t *testing.T) {
    - Mock all external dependencies
 
 2. **Integration Tests**: Test components working together
-   - Handler tests with real database via testcontainers
-   - Repository tests with real database
+   - Handler tests with Gin
+   - Repository tests with real database via Testcontainers
    - End-to-end API tests
 
 3. **Test Data**: Uses testcontainers for isolated database testing

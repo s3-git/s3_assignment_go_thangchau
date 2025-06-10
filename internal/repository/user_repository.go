@@ -9,6 +9,7 @@ import (
 	"context"
 	"database/sql"
 
+	"github.com/lib/pq"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
@@ -284,7 +285,7 @@ func (r *userRepository) CheckBidirectionalBlocksBatch(senderID int, userIDs []i
 	// Build pairs for both directions: (sender -> user) and (user -> sender)
 	var blockerIDs []int
 	var blockedIDs []int
-	
+
 	for _, userID := range userIDs {
 		// Check sender blocks user
 		blockerIDs = append(blockerIDs, senderID)
@@ -294,10 +295,9 @@ func (r *userRepository) CheckBidirectionalBlocksBatch(senderID int, userIDs []i
 		blockedIDs = append(blockedIDs, senderID)
 	}
 
-	// Query for all blocks in one go
 	blocks, err := models.Blocks(
-		qm.Where("(blocker_id, blocked_id) IN (SELECT unnest($1::int[]), unnest($2::int[]))", 
-			blockerIDs, blockedIDs),
+		qm.Where("(blocker_id, blocked_id) IN (SELECT unnest($1::int[]), unnest($2::int[]))",
+			pq.Array(blockerIDs), pq.Array(blockedIDs)),
 	).All(context.Background(), r.db)
 	if err != nil {
 		return nil, errors.Wrap(err, errors.ErrorTypeDatabase, "Failed to check bidirectional blocks")

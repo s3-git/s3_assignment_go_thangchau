@@ -627,3 +627,229 @@ func TestCreateBlock(t *testing.T) {
 		})
 	}
 }
+
+func TestGetRecipients(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	tests := []struct {
+		name                string
+		senderEmail         string
+		text                string
+		setupMock           func(mockRepo *mocks.MockUserRepositoryInterface)
+		wantErr             bool
+		wantErrType         errors.ErrorType
+		wantErrMsg          string
+		expectedRecipients  []*entities.User
+	}{
+		{
+			name:        "successful recipients retrieval with friends, subscribers, and mentioned users",
+			senderEmail: "sender@example.com",
+			text:        "Hello @mentioned@example.com how are you?",
+			setupMock: func(mockRepo *mocks.MockUserRepositoryInterface) {
+				sender := &entities.User{ID: 1, Email: "sender@example.com"}
+				mentioned := &entities.User{ID: 4, Email: "mentioned@example.com"}
+				friends := []*entities.User{
+					{ID: 2, Email: "friend@example.com"},
+				}
+				subscribers := []*entities.User{
+					{ID: 3, Email: "subscriber@example.com"},
+				}
+				
+				mockRepo.EXPECT().GetUserByEmail("sender@example.com").Return(sender, nil)
+				mockRepo.EXPECT().GetUsersByEmails([]string{"mentioned@example.com"}).Return([]*entities.User{mentioned}, nil)
+				mockRepo.EXPECT().GetFriendList(sender).Return(friends, nil)
+				mockRepo.EXPECT().GetSubscribersByUserID(1).Return(subscribers, nil)
+				mockRepo.EXPECT().CheckBidirectionalBlocksBatch(1, []int{4}).Return(map[int]bool{4: false}, nil)
+			},
+			wantErr: false,
+			expectedRecipients: []*entities.User{
+				{ID: 2, Email: "friend@example.com"},
+				{ID: 3, Email: "subscriber@example.com"},
+				{ID: 4, Email: "mentioned@example.com"},
+			},
+		},
+		{
+			name:        "successful recipients retrieval with only friends and subscribers",
+			senderEmail: "sender@example.com",
+			text:        "Hello everyone!",
+			setupMock: func(mockRepo *mocks.MockUserRepositoryInterface) {
+				sender := &entities.User{ID: 1, Email: "sender@example.com"}
+				friends := []*entities.User{
+					{ID: 2, Email: "friend1@example.com"},
+					{ID: 3, Email: "friend2@example.com"},
+				}
+				subscribers := []*entities.User{
+					{ID: 4, Email: "subscriber@example.com"},
+				}
+				
+				mockRepo.EXPECT().GetUserByEmail("sender@example.com").Return(sender, nil)
+				mockRepo.EXPECT().GetFriendList(sender).Return(friends, nil)
+				mockRepo.EXPECT().GetSubscribersByUserID(1).Return(subscribers, nil)
+			},
+			wantErr: false,
+			expectedRecipients: []*entities.User{
+				{ID: 2, Email: "friend1@example.com"},
+				{ID: 3, Email: "friend2@example.com"},
+				{ID: 4, Email: "subscriber@example.com"},
+			},
+		},
+		{
+			name:        "mentioned user is blocked - should be excluded",
+			senderEmail: "sender@example.com",
+			text:        "Hello @blocked@example.com",
+			setupMock: func(mockRepo *mocks.MockUserRepositoryInterface) {
+				sender := &entities.User{ID: 1, Email: "sender@example.com"}
+				mentioned := &entities.User{ID: 4, Email: "blocked@example.com"}
+				
+				mockRepo.EXPECT().GetUserByEmail("sender@example.com").Return(sender, nil)
+				mockRepo.EXPECT().GetUsersByEmails([]string{"blocked@example.com"}).Return([]*entities.User{mentioned}, nil)
+				mockRepo.EXPECT().GetFriendList(sender).Return([]*entities.User{}, nil)
+				mockRepo.EXPECT().GetSubscribersByUserID(1).Return([]*entities.User{}, nil)
+				mockRepo.EXPECT().CheckBidirectionalBlocksBatch(1, []int{4}).Return(map[int]bool{4: true}, nil)
+			},
+			wantErr: false,
+			expectedRecipients: []*entities.User{},
+		},
+		{
+			name:        "sender not found",
+			senderEmail: "nonexistent@example.com",
+			text:        "Hello world!",
+			setupMock: func(mockRepo *mocks.MockUserRepositoryInterface) {
+				mockRepo.EXPECT().GetUserByEmail("nonexistent@example.com").Return(nil, errors.Newf(errors.ErrorTypeNotFound, "User with email '%s' not found", "nonexistent@example.com"))
+			},
+			wantErr:     true,
+			wantErrType: errors.ErrorTypeNotFound,
+			wantErrMsg:  "User with email 'nonexistent@example.com' not found",
+		},
+		{
+			name:        "error getting mentioned users",
+			senderEmail: "sender@example.com",
+			text:        "Hello @mentioned@example.com",
+			setupMock: func(mockRepo *mocks.MockUserRepositoryInterface) {
+				sender := &entities.User{ID: 1, Email: "sender@example.com"}
+				
+				mockRepo.EXPECT().GetUserByEmail("sender@example.com").Return(sender, nil)
+				mockRepo.EXPECT().GetUsersByEmails([]string{"mentioned@example.com"}).Return(nil, errors.New(errors.ErrorTypeDatabase, "database connection failed"))
+			},
+			wantErr:     true,
+			wantErrType: errors.ErrorTypeDatabase,
+			wantErrMsg:  "database connection failed",
+		},
+		{
+			name:        "error getting friend list",
+			senderEmail: "sender@example.com",
+			text:        "Hello world!",
+			setupMock: func(mockRepo *mocks.MockUserRepositoryInterface) {
+				sender := &entities.User{ID: 1, Email: "sender@example.com"}
+				
+				mockRepo.EXPECT().GetUserByEmail("sender@example.com").Return(sender, nil)
+				mockRepo.EXPECT().GetFriendList(sender).Return(nil, errors.New(errors.ErrorTypeDatabase, "failed to get friends"))
+			},
+			wantErr:     true,
+			wantErrType: errors.ErrorTypeDatabase,
+			wantErrMsg:  "failed to get friends",
+		},
+		{
+			name:        "error getting subscribers",
+			senderEmail: "sender@example.com",
+			text:        "Hello world!",
+			setupMock: func(mockRepo *mocks.MockUserRepositoryInterface) {
+				sender := &entities.User{ID: 1, Email: "sender@example.com"}
+				friends := []*entities.User{}
+				
+				mockRepo.EXPECT().GetUserByEmail("sender@example.com").Return(sender, nil)
+				mockRepo.EXPECT().GetFriendList(sender).Return(friends, nil)
+				mockRepo.EXPECT().GetSubscribersByUserID(1).Return(nil, errors.New(errors.ErrorTypeDatabase, "failed to get subscribers"))
+			},
+			wantErr:     true,
+			wantErrType: errors.ErrorTypeDatabase,
+			wantErrMsg:  "failed to get subscribers",
+		},
+		{
+			name:        "error checking bidirectional blocks",
+			senderEmail: "sender@example.com",
+			text:        "Hello @mentioned@example.com",
+			setupMock: func(mockRepo *mocks.MockUserRepositoryInterface) {
+				sender := &entities.User{ID: 1, Email: "sender@example.com"}
+				mentioned := &entities.User{ID: 4, Email: "mentioned@example.com"}
+				
+				mockRepo.EXPECT().GetUserByEmail("sender@example.com").Return(sender, nil)
+				mockRepo.EXPECT().GetUsersByEmails([]string{"mentioned@example.com"}).Return([]*entities.User{mentioned}, nil)
+				mockRepo.EXPECT().GetFriendList(sender).Return([]*entities.User{}, nil)
+				mockRepo.EXPECT().GetSubscribersByUserID(1).Return([]*entities.User{}, nil)
+				mockRepo.EXPECT().CheckBidirectionalBlocksBatch(1, []int{4}).Return(nil, errors.New(errors.ErrorTypeDatabase, "failed to check blocks"))
+			},
+			wantErr:     true,
+			wantErrType: errors.ErrorTypeDatabase,
+			wantErrMsg:  "failed to check blocks",
+		},
+		{
+			name:        "no recipients - empty friends, subscribers, and no mentions",
+			senderEmail: "sender@example.com",
+			text:        "Hello world!",
+			setupMock: func(mockRepo *mocks.MockUserRepositoryInterface) {
+				sender := &entities.User{ID: 1, Email: "sender@example.com"}
+				
+				mockRepo.EXPECT().GetUserByEmail("sender@example.com").Return(sender, nil)
+				mockRepo.EXPECT().GetFriendList(sender).Return([]*entities.User{}, nil)
+				mockRepo.EXPECT().GetSubscribersByUserID(1).Return([]*entities.User{}, nil)
+			},
+			wantErr: false,
+			expectedRecipients: []*entities.User{},
+		},
+		{
+			name:        "mentioned user is same as sender - should be excluded from batch check",
+			senderEmail: "sender@example.com",
+			text:        "Hello @sender@example.com world!",
+			setupMock: func(mockRepo *mocks.MockUserRepositoryInterface) {
+				sender := &entities.User{ID: 1, Email: "sender@example.com"}
+				
+				mockRepo.EXPECT().GetUserByEmail("sender@example.com").Return(sender, nil)
+				mockRepo.EXPECT().GetUsersByEmails([]string{"sender@example.com"}).Return([]*entities.User{sender}, nil)
+				mockRepo.EXPECT().GetFriendList(sender).Return([]*entities.User{}, nil)
+				mockRepo.EXPECT().GetSubscribersByUserID(1).Return([]*entities.User{}, nil)
+				mockRepo.EXPECT().CheckBidirectionalBlocksBatch(1, []int{0}).Return(map[int]bool{}, nil)
+			},
+			wantErr: false,
+			expectedRecipients: []*entities.User{
+				{ID: 1, Email: "sender@example.com"},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockRepo := mocks.NewMockUserRepositoryInterface(ctrl)
+			tt.setupMock(mockRepo)
+
+			controller := NewUserController(mockRepo)
+			recipients, err := controller.GetRecipients(tt.senderEmail, tt.text)
+
+			if !tt.wantErr {
+				assert.NoError(t, err)
+				assert.Equal(t, len(tt.expectedRecipients), len(recipients))
+				
+				// Convert to maps for easier comparison since order might vary
+				expectedMap := make(map[int]*entities.User)
+				for _, user := range tt.expectedRecipients {
+					expectedMap[user.ID] = user
+				}
+				
+				actualMap := make(map[int]*entities.User)
+				for _, user := range recipients {
+					actualMap[user.ID] = user
+				}
+				
+				assert.Equal(t, expectedMap, actualMap)
+				return
+			}
+
+			assert.Error(t, err)
+			var appErr *errors.AppError
+			assert.True(t, stderrors.As(err, &appErr))
+			assert.Equal(t, tt.wantErrType, appErr.Type)
+			assert.Equal(t, tt.wantErrMsg, appErr.Message)
+		})
+	}
+}

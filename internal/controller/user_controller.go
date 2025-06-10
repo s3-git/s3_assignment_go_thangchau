@@ -154,14 +154,16 @@ func (c *userController) GetRecipients(senderEmail, text string) ([]*entities.Us
 	if len(mentionedUsers) > 0 {
 		mentionedUserIDs := make([]int, len(mentionedUsers))
 		for i, user := range mentionedUsers {
-			mentionedUserIDs[i] = user.ID
+			if user.Email != senderEmail {
+				mentionedUserIDs[i] = user.ID
+			}
 		}
-		
+
 		blockedUsers, err := c.userRepo.CheckBidirectionalBlocksBatch(sender.ID, mentionedUserIDs)
 		if err != nil {
 			return nil, err
 		}
-		
+
 		for _, mentioned := range mentionedUsers {
 			if !blockedUsers[mentioned.ID] {
 				recipients[mentioned.ID] = mentioned
