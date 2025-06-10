@@ -323,11 +323,6 @@ func (r *userRepository) CheckBidirectionalBlocksBatch(senderID int, userIDs []i
 	return result, nil
 }
 
-func (r *userRepository) UserExists(email string) (*entities.User, error) {
-	// TODO: Implement user existence check
-	return nil, nil
-}
-
 func (r *userRepository) GetUserByEmail(email string) (*entities.User, error) {
 	user, err := models.Users(
 		models.UserWhere.Email.EQ(email),

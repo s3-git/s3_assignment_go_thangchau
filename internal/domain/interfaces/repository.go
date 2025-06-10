@@ -11,7 +11,6 @@ type UserRepositoryInterface interface {
 	CheckBlockExists(requestorID, targetID int) (bool, error)
 	CheckBidirectionalBlock(user1ID, user2ID int) (bool, error)
 	CheckBidirectionalBlocksBatch(senderID int, userIDs []int) (map[int]bool, error)
-	UserExists(email string) (*entities.User, error)
 	GetUserByEmail(email string) (*entities.User, error)
 	GetUsersByEmails(emails []string) ([]*entities.User, error)
 	GetSubscribersByUserID(userID int) ([]*entities.User, error)
