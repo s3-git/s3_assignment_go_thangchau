@@ -123,7 +123,6 @@ PORT=8080
 │   └── validator/              # Input validation
 ├── sqlboiler_config/           # SQLBoiler configuration
 ├── tmp/                        # Temporary build files
-├── CLAUDE.md                   # Project guidance for AI assistants
 ├── Dockerfile                  # Container definition
 ├── Makefile                    # Build and development commands
 ├── docker-compose.yaml         # Docker services definition
